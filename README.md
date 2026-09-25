@@ -1,0 +1,130 @@
+# Midea M-Thermal Arctic for Home Assistant
+
+A Home Assistant custom integration for the **Midea M-Thermal Arctic R290** heat pump over Modbus.
+
+It is set up in the UI, knows the heat pump's register map itself, and uses the shared Modbus connections introduced in Home Assistant 2026.9: if another Modbus integration talks to the same gateway, both share one connection instead of competing for the bus. No `modbus:` YAML is needed.
+
+## Supported hardware
+
+| | |
+|---|---|
+| Heat pump | Midea M-Thermal Arctic R290, tested on the 10 kW unit |
+| Connection | RS-485 on the **wired controller** (H1/H2), not the outdoor unit |
+| Gateway | Any Modbus TCP-to-RTU gateway, e.g. Elfin EW11A (WiFi) or EE11A (Ethernet) |
+| Home Assistant | 2026.9 or later |
+
+Only what the tested unit has is supported: one zone of water temperature control, without domestic hot water, tank booster or backup heaters. Other M-Thermal models likely share the register map but are untested. The Midea documentation notes that non-R290 units report energy unscaled, which this integration does not handle yet.
+
+## Wiring
+
+Connect the gateway's RS-485 terminals to the wired controller:
+
+| Gateway | Wired controller |
+|---|---|
+| A (+) | H1 |
+| B (−) | H2 |
+
+A ground wire is not needed on a short cable.
+
+## Gateway settings
+
+| Setting | Value |
+|---|---|
+| Baud rate | 9600 |
+| Data bits / parity / stop bits | 8 / none / 1 |
+| Protocol | **Modbus** (TCP-to-RTU gateway), not transparent TCP |
+| Network | TCP server, port 8899 (the Elfin default) |
+
+On Elfin gateways, also consider disabling the serial CLI escape (`+++`), which is not needed.
+
+The Modbus address (unit ID) is set on the heat pump's wired controller. Midea ships it as **1**.
+
+## Installation
+
+**HACS**: add this repository as a custom repository (type *Integration*), then download *Midea M-Thermal* and restart Home Assistant.
+
+**Manually**: copy `custom_components/midea_m_thermal/` into your configuration directory's `custom_components/` folder and restart Home Assistant.
+
+## Configuration
+
+Go to **Settings → Devices & Services → Add Integration → Midea M-Thermal** and enter the gateway's host, port and the heat pump's unit ID. The heat pump is read before anything is saved, so a wrong address or unit ID is reported right away.
+
+To change them later, use **Reconfigure** on the integration entry. Entities and their history are kept.
+
+## Entities
+
+With the default device name *Heat pump*, entity IDs start with `heat_pump_`.
+
+### Controls
+
+| Entity | Register | Notes |
+|---|---|---|
+| Power (switch) | 0, bit 1 | Zone 1 water temperature control. Other bits are left alone |
+| Mode (select) | 1 | Auto, Cooling, Heating |
+| Target temperature (number) | 2, low byte | Min/max follow the active mode, from the heat pump's own limits (registers 201-204): Cooling 5-25 °C, Heating and Auto 25-55 °C on the tested unit |
+
+Cooling and heating share one setpoint register, so switching to Cooling with a setpoint above the cooling maximum pulls it down to that maximum. Every setpoint write re-reads the mode and is clamped to its range, even if the mode was changed on the wired controller since the last poll.
+
+### Sensors
+
+| Sensor | Register | Unit |
+|---|---|---|
+| Operating state | 101 | Idle, Cooling, Heating |
+| Operation mode | 199 | Off, Cooling, Heating, Domestic hot water |
+| Compressor frequency | 100 | Hz |
+| Water inlet temperature (Tw_in) | 104 | °C |
+| Heat exchanger outlet temperature (Tw_out) | 105 | °C |
+| Condenser temperature (T3) | 106 | °C |
+| Outdoor temperature (T4) | 107 | °C |
+| Discharge temperature (Tp) | 108 | °C |
+| Suction temperature (Th) | 109 | °C |
+| Water outlet temperature (T1) | 110 | °C |
+| Water temperature delta | T1 − Tw_in | °C |
+| High pressure (P1) | 116 | kPa |
+| Low pressure (P2) | 117 | kPa |
+| Outdoor unit current | 118 | A |
+| Outdoor unit voltage | 119 | V |
+| Outdoor unit power | current × voltage | W |
+| Error code | 124 | |
+| Water flow | 138 | m³/h |
+| Energy consumption | 143-144 | kWh |
+| Heating capacity | 148 | kW |
+| Power consumption | 150 | kW |
+| COP | 151 | |
+
+Notes:
+
+- **Power consumption** reads 0 in Cooling mode on R290 firmware, even with the compressor running. *Outdoor unit power* is the live figure then, though it excludes the water pump.
+- **COP** is unknown while the compressor is idle and when the register spikes above 10, which it does while the compressor ramps up.
+- **Energy consumption** keeps its last value while the heat pump is unreachable and ignores small dips, so the Energy dashboard and long-term statistics never see a false meter reset.
+- The device model shows the unit's nominal capacity (register 123).
+
+## How it talks to the heat pump
+
+Each poll, every 30 seconds, makes two requests: registers 0-2 and one block of 100-199. The setpoint limits in 201-204 are read once, one register per request, because the controller refuses multi-register reads above 200. If it refuses them entirely, the documented ranges are used.
+
+A dropped connection makes entities unavailable until the next successful poll, without reloading the integration. After three timeouts in a row, the connection is re-opened, because some serial gateways keep their socket open while the RS-485 side has stopped answering.
+
+## Troubleshooting
+
+- **Cannot connect**: check that the gateway runs in Modbus mode (not transparent TCP), the port, and the unit ID on the wired controller.
+- **"A device answered, but not like a Midea M-Thermal heat pump"**: the unit ID reaches a different device.
+- **Reporting a problem**: download the diagnostics from the device page. They contain every register the integration reads, which is often enough to reproduce the issue in a test.
+
+## Development
+
+The register map lives in `custom_components/midea_m_thermal/m_thermal_modbus/`, a device library on [modbus-connection](https://home-assistant-libs.github.io/modbus-connection/) with no Home Assistant imports. The integration around it follows Home Assistant's [Modbus developer guide](https://developers.home-assistant.io/docs/modbus/introduction).
+
+`modbus-connection` is not a requirement of this integration: it comes with Home Assistant's `modbus` integration, which pins the version (4.10.0 in Home Assistant 2026.9.3). Write against that version's API rather than the latest documentation, which describes newer releases.
+
+Run the tests, which use Home Assistant 2026.9.3 and a mock heat pump loaded with a real register dump (`tests/fixtures/registers.json`):
+
+```bash
+uv venv --python 3.14
+uv pip install -r requirements_test.txt
+.venv/bin/pytest
+```
+
+## License
+
+MIT
