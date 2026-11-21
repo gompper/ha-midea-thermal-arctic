@@ -23,6 +23,9 @@ Connect the gateway's RS-485 terminals to the wired controller:
 |---|---|
 | A (+) | H1 |
 | B (−) | H2 |
+| E / shield | E_H |
+
+This follows the wired controller's installation manual. Some older Midea Modbus documents show H1 and H2 the other way round. If the heat pump never answers, swapped lines are the most common cause; swapping them is harmless. HA/HB on the controller is the link to the hydraulic module, not Modbus.
 
 A ground wire is not needed on a short cable.
 
