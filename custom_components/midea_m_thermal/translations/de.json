@@ -1,0 +1,150 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Verbindung zum Kabelbedienteil der Wärmepumpe über ein Modbus-TCP-Gateway, z. B. ein Elfin EW11 im Modbus-Modus.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "unit_id": "Unit ID"
+        },
+        "data_description": {
+          "host": "Hostname oder IP-Adresse des Modbus-TCP-Gateways.",
+          "port": "Modbus-TCP-Port des Gateways. Das Elfin EW11 nutzt 8899.",
+          "unit_id": "Modbus-Adresse der Wärmepumpe, eingestellt am Kabelbedienteil. Ab Werk ist sie 1."
+        }
+      },
+      "reconfigure": {
+        "description": "Ändern, wie Home Assistant die Wärmepumpe erreicht.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "unit_id": "Unit ID"
+        },
+        "data_description": {
+          "host": "Hostname oder IP-Adresse des Modbus-TCP-Gateways.",
+          "port": "Modbus-TCP-Port des Gateways. Das Elfin EW11 nutzt 8899.",
+          "unit_id": "Modbus-Adresse der Wärmepumpe, eingestellt am Kabelbedienteil. Ab Werk ist sie 1."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen. Prüfe die Adresse des Gateways, ob es im Modbus-TCP-Modus läuft, und die Unit ID.",
+      "not_a_heat_pump": "Ein Gerät hat geantwortet, aber nicht wie eine Midea-M-Thermal-Wärmepumpe. Prüfe die Unit ID.",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Diese Wärmepumpe ist bereits eingerichtet",
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
+    }
+  },
+  "entity": {
+    "number": {
+      "target_temperature": {
+        "name": "Solltemperatur"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Modus",
+        "state": {
+          "auto": "Auto",
+          "cooling": "Kühlen",
+          "heating": "Heizen"
+        }
+      }
+    },
+    "sensor": {
+      "operating_state": {
+        "name": "Betriebszustand",
+        "state": {
+          "idle": "Leerlauf",
+          "cooling": "Kühlen",
+          "heating": "Heizen"
+        }
+      },
+      "operation_mode": {
+        "name": "Betriebsart",
+        "state": {
+          "off": "Aus",
+          "cooling": "Kühlen",
+          "heating": "Heizen",
+          "dhw": "Warmwasser"
+        }
+      },
+      "outdoor_temperature": {
+        "name": "Außentemperatur"
+      },
+      "water_inlet_temperature": {
+        "name": "Wassereintrittstemperatur"
+      },
+      "water_outlet_temperature": {
+        "name": "Wasseraustrittstemperatur"
+      },
+      "heat_exchanger_outlet_temperature": {
+        "name": "Wärmetauscher-Austrittstemperatur"
+      },
+      "condenser_temperature": {
+        "name": "Verflüssigertemperatur"
+      },
+      "discharge_temperature": {
+        "name": "Heißgastemperatur"
+      },
+      "suction_temperature": {
+        "name": "Sauggastemperatur"
+      },
+      "water_temperature_delta": {
+        "name": "Wassertemperatur-Spreizung"
+      },
+      "water_flow": {
+        "name": "Wasserdurchfluss"
+      },
+      "compressor_frequency": {
+        "name": "Verdichterfrequenz"
+      },
+      "high_pressure": {
+        "name": "Hochdruck"
+      },
+      "low_pressure": {
+        "name": "Niederdruck"
+      },
+      "power_consumption": {
+        "name": "Leistungsaufnahme"
+      },
+      "heating_capacity": {
+        "name": "Heizleistung"
+      },
+      "cop": {
+        "name": "COP"
+      },
+      "outdoor_unit_current": {
+        "name": "Außeneinheit Strom"
+      },
+      "outdoor_unit_voltage": {
+        "name": "Außeneinheit Spannung"
+      },
+      "outdoor_unit_power": {
+        "name": "Außeneinheit Leistung"
+      },
+      "energy_consumption": {
+        "name": "Energieverbrauch"
+      },
+      "error_code": {
+        "name": "Fehlercode"
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Ein/Aus"
+      }
+    }
+  },
+  "exceptions": {
+    "communication_error": {
+      "message": "Fehler bei der Kommunikation mit der Wärmepumpe: {error}"
+    },
+    "write_failed": {
+      "message": "Die Wärmepumpe hat die Änderung nicht übernommen: {error}"
+    }
+  }
+}
