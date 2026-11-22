@@ -12,7 +12,7 @@ body:
     id: heat_pump
     attributes:
       label: Heat pump model and capacity
-      placeholder: "M-Thermal Arctic R290, 10 kW"
+      placeholder: "M-Thermal Arctic R290, 4 kW"
   - type: textarea
     id: diagnostics
     attributes:

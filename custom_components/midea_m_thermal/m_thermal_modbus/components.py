@@ -76,8 +76,8 @@ class Readings(Component):
     heating_capacity = gauge(148, 0.01, signed=False, unit="kW")
 
     power_consumption = gauge(150, 0.01, signed=False, unit="kW")
-    """Electrical power. Reads 0 in cooling mode on R290 firmware, even with
-    the compressor running; `outdoor_unit_power` is the live figure then."""
+    """Electrical power. Reads 0 in cooling mode on a 10 kW R290 unit, even
+    with the compressor running; `outdoor_unit_power` is the live figure then."""
 
     _cop = gauge(151, 0.01, signed=False)
 

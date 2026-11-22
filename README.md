@@ -18,12 +18,12 @@ It is set up in the UI, knows the heat pump's register map itself, and uses the 
 
 | | |
 |---|---|
-| Heat pump | Midea M-Thermal Arctic R290, tested on the 10 kW unit |
+| Heat pump | Midea M-Thermal Arctic R290, tested on the 4 kW unit (the test data comes from a 10 kW unit) |
 | Connection | RS-485 on the **wired controller** (H1/H2), not the outdoor unit |
 | Gateway | Any Modbus TCP-to-RTU gateway, e.g. Elfin EW11A (WiFi) or EE11A (Ethernet) |
 | Home Assistant | 2026.10 or later |
 
-Only what the tested unit has is supported: one zone of water temperature control, without domestic hot water, tank booster or backup heaters. Other M-Thermal models likely share the register map but are untested. The Midea documentation notes that non-R290 units report energy unscaled, which this integration does not handle yet.
+Only what the tested units have is supported: one zone of water temperature control, without domestic hot water, tank booster or backup heaters. Other M-Thermal models likely share the register map but are untested. The Midea documentation notes that non-R290 units report energy unscaled, which this integration does not handle yet.
 
 ## Wiring
 
@@ -80,7 +80,7 @@ With the default device name *Heat pump*, entity IDs start with `heat_pump_`.
 |---|---|---|
 | Power (switch) | 0, bit 1 | Zone 1 water temperature control. Other bits are left alone |
 | Mode (select) | 1 | Auto, Cooling, Heating |
-| Target temperature (number) | 2, low byte | Min/max follow the active mode, from the heat pump's own limits (registers 201-204): Cooling 5-25 °C, Heating and Auto 25-55 °C on the tested unit |
+| Target temperature (number) | 2, low byte | Min/max follow the active mode, from the heat pump's own limits (registers 201-204): e.g. Cooling 5-25 °C, Heating and Auto 25-55 °C |
 
 Cooling and heating share one setpoint register, so switching to Cooling with a setpoint above the cooling maximum pulls it down to that maximum. Every setpoint write re-reads the mode and is clamped to its range, even if the mode was changed on the wired controller since the last poll.
 
@@ -113,7 +113,7 @@ Cooling and heating share one setpoint register, so switching to Cooling with a 
 
 Notes:
 
-- **Power consumption** reads 0 in Cooling mode on R290 firmware, even with the compressor running. *Outdoor unit power* is the live figure then, though it excludes the water pump.
+- **Power consumption** reads 0 in Cooling mode on the 10 kW unit, even with the compressor running; not yet checked on the 4 kW unit. *Outdoor unit power* is the live figure then, though it excludes the water pump.
 - **COP** is unknown while the compressor is idle and when the register spikes above 10, which it does while the compressor ramps up.
 - **Energy consumption** keeps its last value while the heat pump is unreachable and ignores small dips, so the Energy dashboard and long-term statistics never see a false meter reset.
 - The device model shows the unit's nominal capacity (register 123).
