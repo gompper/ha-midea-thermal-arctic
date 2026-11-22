@@ -1,0 +1,20 @@
+name: Feature request
+description: Support for another model, register or entity
+labels: [enhancement]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: What would you like the integration to do?
+    validations:
+      required: true
+  - type: input
+    id: heat_pump
+    attributes:
+      label: Heat pump model and capacity
+      placeholder: "M-Thermal Arctic R290, 10 kW"
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics or register documentation
+      description: For a new model or register, a diagnostics download from your unit and the relevant page of Midea's Modbus documentation help most.

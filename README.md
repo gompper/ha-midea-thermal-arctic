@@ -1,6 +1,16 @@
 # Midea M-Thermal Arctic for Home Assistant
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
+[![Release](https://img.shields.io/github/v/release/gompper/ha-midea-thermal-arctic)](https://github.com/gompper/ha-midea-thermal-arctic/releases)
+[![CI](https://github.com/gompper/ha-midea-thermal-arctic/actions/workflows/ci.yml/badge.svg)](https://github.com/gompper/ha-midea-thermal-arctic/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/gompper/ha-midea-thermal-arctic)](LICENSE)
+
 A Home Assistant custom integration for the **Midea M-Thermal Arctic R290** heat pump over Modbus.
+
+> [!WARNING]
+> **Unofficial project, use at your own risk.** This integration is not affiliated with, endorsed by or supported by Midea. It reads from and writes to your heat pump's controller (power, mode and target temperature). It is provided "as is", without warranty of any kind, and the authors accept no liability for damage to your heat pump, your building or anything else, for lost manufacturer warranty, or for any other consequence of using it. See the [license](LICENSE).
+>
+> Wiring the RS-485 connection means opening the wired controller. Disconnect power first, follow the manufacturer's manual and local regulations, and leave it to a qualified person if you are unsure.
 
 It is set up in the UI, knows the heat pump's register map itself, and uses the shared Modbus connections introduced in Home Assistant 2026.9: if another Modbus integration talks to the same gateway, both share one connection instead of competing for the bus. No `modbus:` YAML is needed.
 
@@ -44,13 +54,19 @@ The Modbus address (unit ID) is set on the heat pump's wired controller. Midea s
 
 ## Installation
 
-**HACS**: add this repository as a custom repository (type *Integration*), then download *Midea M-Thermal* and restart Home Assistant.
+**HACS** (recommended):
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=gompper&repository=ha-midea-thermal-arctic&category=integration)
+
+The button adds this repository to HACS in your Home Assistant. Then download *Midea M-Thermal* and restart Home Assistant. Without the button: in HACS, open the menu → *Custom repositories*, add `https://github.com/gompper/ha-midea-thermal-arctic` with type *Integration*, then download as above.
 
 **Manually**: copy `custom_components/midea_m_thermal/` into your configuration directory's `custom_components/` folder and restart Home Assistant.
 
 ## Configuration
 
-Go to **Settings → Devices & Services → Add Integration → Midea M-Thermal** and enter the gateway's host, port and the heat pump's unit ID. The heat pump is read before anything is saved, so a wrong address or unit ID is reported right away.
+[![Open your Home Assistant instance and start setting up Midea M-Thermal.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=midea_m_thermal)
+
+Or go to **Settings → Devices & Services → Add Integration → Midea M-Thermal**, and enter the gateway's host, port and the heat pump's unit ID. The heat pump is read before anything is saved, so a wrong address or unit ID is reported right away.
 
 To change them later, use **Reconfigure** on the integration entry. Entities and their history are kept.
 
@@ -112,7 +128,7 @@ A dropped connection makes entities unavailable until the next successful poll, 
 
 - **Cannot connect**: check that the gateway runs in Modbus mode (not transparent TCP), the port, and the unit ID on the wired controller.
 - **"A device answered, but not like a Midea M-Thermal heat pump"**: the unit ID reaches a different device.
-- **Reporting a problem**: download the diagnostics from the device page. They contain every register the integration reads, which is often enough to reproduce the issue in a test.
+- **Reporting a problem**: download the diagnostics from the device page. They contain every register the integration reads, which is often enough to reproduce the issue in a test. Attach them to a [new issue](https://github.com/gompper/ha-midea-thermal-arctic/issues/new/choose).
 
 ## Development
 
@@ -128,6 +144,19 @@ uv pip install -r requirements_test.txt
 .venv/bin/pytest
 ```
 
+### Releasing
+
+1. Raise `version` in `custom_components/midea_m_thermal/manifest.json` and merge it to `main`.
+2. Publish a GitHub release whose tag is that version with a `v` in front, e.g. `v1.2.0`. The release workflow fails if tag and manifest disagree.
+
+HACS offers the new release to users as an update.
+
+## Credits
+
+This integration builds on [mkroiss/midea-thermal-artic-r290-modbus](https://github.com/mkroiss/midea-thermal-artic-r290-modbus), a YAML-based Home Assistant setup for the same heat pump. Its register documentation, the behaviour observed on a real unit (setpoint limits per mode, Power consumption reading 0 in Cooling, COP spikes, which register blocks can be read in one request) and the register dump used by the tests all come from there.
+
 ## License
 
-MIT
+[MIT](LICENSE). No warranty, see the notice at the top.
+
+Midea and M-Thermal are trademarks of their respective owners and are used here only to name the hardware this integration works with.
