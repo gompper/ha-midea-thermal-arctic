@@ -51,7 +51,9 @@ class MideaDataUpdateCoordinator(DataUpdateCoordinator[UpdateReport]):
             self._timeouts += 1
             if self._timeouts >= _WEDGED_AFTER_TIMEOUTS:
                 self._timeouts = 0
-                await self.device.unit.disconnect()
+                # The connection is shared: this drops it for every integration
+                # on the gateway, which is what a wedged link needs anyway.
+                await self.device.modbus_unit.disconnect()
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="communication_error",

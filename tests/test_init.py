@@ -19,13 +19,14 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.midea_m_thermal.const import DOMAIN
+from custom_components.midea_m_thermal.m_thermal_modbus import REQUEST_TIMEOUT
 from homeassistant.components.modbus import async_get_temporary_unit
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from .conftest import ReusableMockConnection
+from .conftest import UNIT_ID, ReusableMockConnection
 
 SCAN = timedelta(seconds=30)
 
@@ -38,11 +39,14 @@ async def test_setup_and_unload(
     """The entry loads over a shared unit, and unloading closes the link."""
     assert init_integration.state is ConfigEntryState.LOADED
     assert mock_connection.closes == 0
+    assert mock_connection.for_unit(UNIT_ID).required_timeout == REQUEST_TIMEOUT
 
     await hass.config_entries.async_unload(init_integration.entry_id)
 
     assert init_integration.state is ConfigEntryState.NOT_LOADED
     assert mock_connection.closes == 1
+    # The timeout request does not outlive the entry on a shared link.
+    assert mock_connection.for_unit(UNIT_ID).required_timeout is None
 
 
 async def test_device_info(

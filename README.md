@@ -11,7 +11,7 @@ It is set up in the UI, knows the heat pump's register map itself, and uses the 
 | Heat pump | Midea M-Thermal Arctic R290, tested on the 10 kW unit |
 | Connection | RS-485 on the **wired controller** (H1/H2), not the outdoor unit |
 | Gateway | Any Modbus TCP-to-RTU gateway, e.g. Elfin EW11A (WiFi) or EE11A (Ethernet) |
-| Home Assistant | 2026.9 or later |
+| Home Assistant | 2026.10 or later |
 
 Only what the tested unit has is supported: one zone of water temperature control, without domestic hot water, tank booster or backup heaters. Other M-Thermal models likely share the register map but are untested. The Midea documentation notes that non-R290 units report energy unscaled, which this integration does not handle yet.
 
@@ -118,9 +118,9 @@ A dropped connection makes entities unavailable until the next successful poll, 
 
 The register map lives in `custom_components/midea_m_thermal/m_thermal_modbus/`, a device library on [modbus-connection](https://home-assistant-libs.github.io/modbus-connection/) with no Home Assistant imports. The integration around it follows Home Assistant's [Modbus developer guide](https://developers.home-assistant.io/docs/modbus/introduction).
 
-`modbus-connection` is not a requirement of this integration: it comes with Home Assistant's `modbus` integration, which pins the version (4.10.0 in Home Assistant 2026.9.3). Write against that version's API rather than the latest documentation, which describes newer releases.
+`modbus-connection` is not a requirement of this integration: it comes with Home Assistant's `modbus` integration, which pins the version (4.12.3 in Home Assistant 2026.10.0, 4.12.4 in 2026.10.4, 4.12.7 in 2026.11). The device builds on its `model.Device` base class, which 4.10.0 in Home Assistant 2026.9 lacks; hence the 2026.10 minimum. Write against that version's API rather than the latest documentation, which describes newer releases.
 
-Run the tests, which use Home Assistant 2026.9.3 and a mock heat pump loaded with a real register dump (`tests/fixtures/registers.json`):
+Run the tests, which use Home Assistant 2026.10.4 (the newest release `pytest-homeassistant-custom-component` covers) and a mock heat pump loaded with a real register dump (`tests/fixtures/registers.json`):
 
 ```bash
 uv venv --python 3.14

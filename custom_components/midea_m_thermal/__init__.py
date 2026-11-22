@@ -33,7 +33,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: MideaConfigEntry) -> boo
         ModbusTcpParams(host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]),
         entry.data[CONF_UNIT_ID],
     )
-    coordinator = MideaDataUpdateCoordinator(hass, entry, MideaHeatPump(unit))
+    device = MideaHeatPump(unit)
+    # The device asked the shared link for its timeout; withdraw it on unload so
+    # it does not outlive the entry while another integration keeps the link.
+    entry.async_on_unload(lambda: unit.require_timeout(None))
+    coordinator = MideaDataUpdateCoordinator(hass, entry, device)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
 

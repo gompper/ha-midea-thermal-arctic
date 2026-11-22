@@ -11,6 +11,7 @@ from modbus_connection.mock import MockModbusUnit
 import pytest
 
 from custom_components.midea_m_thermal.m_thermal_modbus import (
+    REQUEST_TIMEOUT,
     MideaHeatPump,
     ModeSetting,
     OperatingState,
@@ -24,6 +25,12 @@ from .conftest import ReusableMockConnection
 def device(mock_unit: MockModbusUnit) -> MideaHeatPump:
     """The heat pump on the mock unit."""
     return MideaHeatPump(mock_unit)
+
+
+def test_asks_the_link_for_a_short_timeout(mock_unit: MockModbusUnit) -> None:
+    """The controller answers fast, so the link need not wait its 10 s default."""
+    MideaHeatPump(mock_unit)
+    assert mock_unit.required_timeout == REQUEST_TIMEOUT
 
 
 async def test_decodes_the_register_dump(device: MideaHeatPump) -> None:
@@ -59,13 +66,14 @@ async def test_reads_only_what_the_controller_serves(
 ) -> None:
     """Two bulk reads per poll; the configuration block one register at a time."""
     await device.async_update()
+    # The limits come first, from the device's one-time setup.
     assert [(e.address, e.count) for e in mock_unit.read_events] == [
-        (0, 3),
-        (100, 100),
         (201, 1),
         (202, 1),
         (203, 1),
         (204, 1),
+        (0, 3),
+        (100, 100),
     ]
 
     mock_unit.read_events.clear()
@@ -141,13 +149,15 @@ async def test_refused_setpoint_limits_fall_back_to_defaults(
 async def test_setpoint_limits_retry_after_a_timeout(
     device: MideaHeatPump, mock_unit: MockModbusUnit
 ) -> None:
-    """A timeout reading the limits is retried on the next poll."""
+    """A timeout reading the limits fails that poll; the next poll reads them."""
     mock_unit.fail_read(203, ModbusTimeoutError("no answer"))
-    await device.async_update()
+    with pytest.raises(ModbusTimeoutError):
+        await device.async_update()
     assert device.limits.heating_max is None
 
     mock_unit.fail_read(203, None)
-    await device.async_update()
+    report = await device.async_update()
+    assert report.updated == {"control", "readings"}
     assert device.limits.heating_max == 55
 
 

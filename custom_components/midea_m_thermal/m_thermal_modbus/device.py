@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+from collections.abc import Iterable
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from modbus_connection import (
-    ModbusConnectionError,
-    ModbusError,
-    ModbusExceptionError,
-    ModbusTimeoutError,
-)
+from modbus_connection import ModbusExceptionError
+from modbus_connection.model import Device, Raw, UpdateReport
 
 from .components import Control, Readings, SetpointLimits
 from .enums import ModeSetting
@@ -25,36 +20,59 @@ _LOGGER = logging.getLogger(__name__)
 # Sub-systems read on every poll, by attribute name.
 POLLED = ("control", "readings")
 
+# Every sub-system, for the raw register map.
+ALL_COMPONENTS = ("control", "readings", "limits")
+
 # Zone 1 setpoint ranges from the Midea documentation, used until the device
 # reports its own.
 DEFAULT_COOLING_RANGE = (5, 25)
 DEFAULT_HEATING_RANGE = (25, 55)
 
-type Raw = dict[str, dict[int, Any]]
+REQUEST_TIMEOUT = 3.0
+"""Seconds to wait for an answer. The largest read, the 100-register operating
+block, takes about 0.3 s at 9600 baud; the link's 10 s default only delays
+noticing a gateway whose RS-485 side has gone quiet."""
+
+__all__ = [
+    "ALL_COMPONENTS",
+    "DEFAULT_COOLING_RANGE",
+    "DEFAULT_HEATING_RANGE",
+    "POLLED",
+    "REQUEST_TIMEOUT",
+    "MideaHeatPump",
+    "UpdateReport",
+]
 
 
-@dataclass(frozen=True)
-class UpdateReport:
-    """Which sub-systems a poll refreshed, and why the others failed."""
-
-    updated: frozenset[str]
-    failed: Mapping[str, ModbusError] = field(default_factory=dict)
-
-
-class MideaHeatPump:
+class MideaHeatPump(Device):
     """A Midea M-Thermal heat pump on a Modbus unit.
 
     The unit is shared and owned by the caller; this object only reads and
-    writes registers through it.
+    writes registers through it, and asks the link for `REQUEST_TIMEOUT`.
     """
 
     def __init__(self, unit: ModbusUnit) -> None:
         """Model the heat pump behind a unit."""
-        self.unit = unit
+        super().__init__(unit)
+        unit.require_timeout(REQUEST_TIMEOUT)
         self.control = Control(unit)
         self.readings = Readings(unit)
         self.limits = SetpointLimits(unit)
-        self._limits_pending = True
+
+    async def _async_setup(self) -> None:
+        """Read the setpoint limits once; they only change in the installer menu.
+
+        A controller that refuses them keeps the documented defaults for good.
+        Any other error propagates, failing this poll, and the next poll tries
+        again.
+        """
+        try:
+            await self.limits.async_update(notify=False)
+        except ModbusExceptionError as err:
+            _LOGGER.warning(
+                "The heat pump refused its setpoint limits, using the defaults: %s",
+                err,
+            )
 
     async def async_update(self) -> UpdateReport:
         """Refresh every polled sub-system, each on its own.
@@ -63,42 +81,11 @@ class MideaHeatPump:
         refresh. A dropped link raises at once, and so does a timeout before
         anything answered, since that means nothing is listening.
         """
-        updated: set[str] = set()
-        failed: dict[str, ModbusError] = {}
-        for name in POLLED:
-            try:
-                await getattr(self, name).async_update()
-            except ModbusConnectionError:
-                raise
-            except ModbusTimeoutError as err:
-                if not updated:
-                    raise
-                failed[name] = err
-            except ModbusError as err:
-                failed[name] = err
-            else:
-                updated.add(name)
-        if self._limits_pending and updated:
-            await self._async_read_limits()
-        return UpdateReport(frozenset(updated), failed)
+        return await self.async_poll(POLLED)
 
-    async def _async_read_limits(self) -> None:
-        """Read the setpoint limits once; they only change in the installer menu.
-
-        Until they are read, and for good if the device refuses them, the
-        documented defaults apply.
-        """
-        try:
-            await self.limits.async_update()
-        except ModbusExceptionError as err:
-            _LOGGER.warning(
-                "The heat pump refused its setpoint limits, using the defaults: %s",
-                err,
-            )
-        except ModbusError as err:
-            _LOGGER.debug("Could not read the setpoint limits, will retry: %s", err)
-            return
-        self._limits_pending = False
+    async def async_read_raw(self, names: Iterable[str] = ALL_COMPONENTS) -> Raw:
+        """Every register this device reads, undecoded, for diagnostics."""
+        return await super().async_read_raw(names)
 
     def target_range(self, mode: ModeSetting | None = None) -> tuple[int, int]:
         """The Zone 1 setpoint range for a mode, the current mode by default.
@@ -139,11 +126,3 @@ class MideaHeatPump:
         low, high = self.target_range(mode)
         if target is not None and not low <= target <= high:
             await self.control.write("zone1_target", max(low, min(target, high)))
-
-    async def async_read_raw(self) -> Raw:
-        """Every register this device reads, undecoded, for diagnostics."""
-        merged: Raw = {}
-        for component in (self.control, self.readings, self.limits):
-            for space, values in (await component.async_read_raw()).items():
-                merged.setdefault(space, {}).update(values)
-        return merged

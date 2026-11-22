@@ -8,6 +8,7 @@ from .components import Control, Readings, SetpointLimits
 from .device import (
     DEFAULT_COOLING_RANGE,
     DEFAULT_HEATING_RANGE,
+    REQUEST_TIMEOUT,
     MideaHeatPump,
     UpdateReport,
 )
@@ -16,6 +17,7 @@ from .enums import ModeSetting, OperatingState, OperationMode
 __all__ = [
     "DEFAULT_COOLING_RANGE",
     "DEFAULT_HEATING_RANGE",
+    "REQUEST_TIMEOUT",
     "Control",
     "MideaHeatPump",
     "ModeSetting",
