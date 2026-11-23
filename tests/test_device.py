@@ -58,6 +58,17 @@ async def test_decodes_the_register_dump(device: MideaHeatPump) -> None:
     assert readings.power_consumption == pytest.approx(0.87)
     assert readings.heating_capacity == pytest.approx(3.49)
     assert readings.cop == pytest.approx(4.01)
+    assert readings.energy_produced == pytest.approx(1150.07)
+    assert readings.heating_energy == pytest.approx(1149.92)
+    assert readings.heating_energy_consumption == pytest.approx(317.14)
+    assert readings.lifetime_cop == pytest.approx(3.62)
+    assert readings.cooling_capacity == 0
+    assert readings.cooling_power_consumption == 0
+    assert readings.eer is None
+    assert readings.cooling_energy is None  # never cooled
+    assert readings.cooling_energy_consumption is None
+    assert readings.lifetime_eer is None
+    assert readings.condenser_temperature is None  # 65535: no T3 sensor
     assert readings.capacity == 10
 
 
@@ -92,6 +103,16 @@ async def test_decodes_negative_temperatures(
     mock_unit.holding[107] = 65531
     await device.async_update()
     assert device.readings.outdoor_temperature == -5
+
+
+@pytest.mark.parametrize("raw", [0x7F, 0xFF, 0x7FFF, 0xFFFF])
+async def test_absent_temperature_sensor_is_no_value(
+    device: MideaHeatPump, mock_unit: MockModbusUnit, raw: int
+) -> None:
+    """An absent or broken sensor's marker is no value, not a temperature."""
+    mock_unit.holding[107] = raw
+    await device.async_update()
+    assert device.readings.outdoor_temperature is None
 
 
 @pytest.mark.parametrize(("raw", "expected"), [(0, None), (1100, None), (401, 4.01)])

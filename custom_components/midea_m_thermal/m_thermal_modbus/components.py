@@ -7,12 +7,50 @@ them, so every register there is read on its own.
 
 from __future__ import annotations
 
-from modbus_connection.model import Component, bit, bits, enum, gauge, integer, uint32
+from modbus_connection.model import (
+    Component,
+    NumberField,
+    bit,
+    bits,
+    enum,
+    gauge,
+    integer,
+    uint32,
+)
 
 from .enums import ModeSetting, OperatingState, OperationMode
 
 # Anything that answered a zone setpoint limit outside this is not a limit.
 _MAX_SETPOINT = 99
+
+# Raw values a temperature register holds when its sensor is absent or broken:
+# 0x7F and 0x7FFF are documented, 0xFF and 0xFFFF are what unfitted sensors
+# report in practice.
+_NO_TEMPERATURE = (0x7F, 0xFF, 0x7FFF, 0xFFFF)
+
+# A COP or EER above this is a ramp-up spike, not a reading.
+_MAX_EFFICIENCY = 10
+
+
+def _temperature(address: int) -> NumberField[int]:
+    """A signed whole-degree temperature that is None while its sensor is absent."""
+    return integer(address, nan=_NO_TEMPERATURE, unit="°C")
+
+
+def _energy(address: int) -> NumberField[float]:
+    """A lifetime counter in kWh over two registers, high word first.
+
+    It reads 0 until the unit has reported it, which is no value rather than a
+    reset. R290 units report hundredths of a kWh.
+    """
+    return uint32(address, scale=0.01, nan=0, unit="kWh")
+
+
+def _efficiency(value: float | None) -> float | None:
+    """A COP or EER, or None when idle or implausibly high."""
+    if value is None or not 0 < value <= _MAX_EFFICIENCY:
+        return None
+    return value
 
 
 class Control(Component):
@@ -40,25 +78,25 @@ class Readings(Component):
     compressor_frequency = integer(100, signed=False, unit="Hz")
     operating_state = enum(101, OperatingState)
 
-    water_inlet_temperature = integer(104, unit="°C")
+    water_inlet_temperature = _temperature(104)
     """Tw_in, the water entering the plate heat exchanger."""
 
-    heat_exchanger_outlet_temperature = integer(105, unit="°C")
+    heat_exchanger_outlet_temperature = _temperature(105)
     """Tw_out, the water leaving the plate heat exchanger."""
 
-    condenser_temperature = integer(106, unit="°C")
+    condenser_temperature = _temperature(106)
     """T3."""
 
-    outdoor_temperature = integer(107, unit="°C")
+    outdoor_temperature = _temperature(107)
     """T4, outdoor ambient."""
 
-    discharge_temperature = integer(108, unit="°C")
+    discharge_temperature = _temperature(108)
     """Tp, compressor discharge."""
 
-    suction_temperature = integer(109, unit="°C")
+    suction_temperature = _temperature(109)
     """Th, compressor suction."""
 
-    water_outlet_temperature = integer(110, unit="°C")
+    water_outlet_temperature = _temperature(110)
     """T1, total water outlet after any backup heater."""
 
     high_pressure = integer(116, signed=False, unit="kPa")
@@ -69,17 +107,42 @@ class Readings(Component):
     error_code = integer(124, signed=False)
     water_flow = gauge(138, 0.01, signed=False, unit="m³/h")
 
-    energy_consumption = uint32(143, scale=0.01, nan=0, unit="kWh")
-    """Lifetime electrical energy. The counter reads 0 while the unit has not
-    reported it yet, which is no value rather than a reset."""
+    energy_consumption = _energy(143)
+    """Lifetime electrical energy, all modes."""
+
+    energy_produced = _energy(145)
+    """Lifetime heat (or cold) delivered, all modes."""
 
     heating_capacity = gauge(148, 0.01, signed=False, unit="kW")
 
     power_consumption = gauge(150, 0.01, signed=False, unit="kW")
-    """Electrical power. Reads 0 in cooling mode on a 10 kW R290 unit, even
-    with the compressor running; `outdoor_unit_power` is the live figure then."""
+    """Electrical power in heating mode. Reads 0 in cooling mode, even with the
+    compressor running; `cooling_power_consumption` covers that."""
 
     _cop = gauge(151, 0.01, signed=False)
+
+    heating_energy = _energy(158)
+    """Lifetime heat delivered in heating mode."""
+
+    heating_energy_consumption = _energy(162)
+    """Lifetime electrical energy in heating mode."""
+
+    _lifetime_cop = gauge(164, 0.01, signed=False)
+
+    cooling_energy = _energy(165)
+    """Lifetime cold delivered in cooling mode."""
+
+    cooling_energy_consumption = _energy(169)
+    """Lifetime electrical energy in cooling mode."""
+
+    _lifetime_eer = gauge(171, 0.01, signed=False)
+
+    cooling_capacity = gauge(180, 0.01, signed=False, unit="kW")
+
+    cooling_power_consumption = gauge(181, 0.01, signed=False, unit="kW")
+    """Electrical power in cooling mode, where `power_consumption` reads 0."""
+
+    _eer = gauge(182, 0.01, signed=False)
 
     operation_mode = enum(199, OperationMode)
 
@@ -89,10 +152,22 @@ class Readings(Component):
 
         The register spikes to unrealistic values while the compressor ramps.
         """
-        cop = self._cop
-        if cop is None or not 0 < cop <= 10:
-            return None
-        return cop
+        return _efficiency(self._cop)
+
+    @property
+    def eer(self) -> float | None:
+        """Cooling EER, or None when idle or implausibly high."""
+        return _efficiency(self._eer)
+
+    @property
+    def lifetime_cop(self) -> float | None:
+        """Heat delivered over electricity used in heating mode, lifetime."""
+        return _efficiency(self._lifetime_cop)
+
+    @property
+    def lifetime_eer(self) -> float | None:
+        """Cold delivered over electricity used in cooling mode, lifetime."""
+        return _efficiency(self._lifetime_eer)
 
     @property
     def outdoor_unit_power(self) -> float | None:

@@ -117,6 +117,15 @@
       "cop": {
         "name": "COP"
       },
+      "cooling_power_consumption": {
+        "name": "Leistungsaufnahme Kühlen"
+      },
+      "cooling_capacity": {
+        "name": "Kühlleistung"
+      },
+      "eer": {
+        "name": "EER"
+      },
       "outdoor_unit_current": {
         "name": "Außeneinheit Strom"
       },
@@ -128,6 +137,27 @@
       },
       "energy_consumption": {
         "name": "Energieverbrauch"
+      },
+      "energy_produced": {
+        "name": "Erzeugte Energie"
+      },
+      "heating_energy_consumption": {
+        "name": "Energieverbrauch Heizen"
+      },
+      "heating_energy": {
+        "name": "Erzeugte Wärme"
+      },
+      "lifetime_cop": {
+        "name": "COP gesamt"
+      },
+      "cooling_energy_consumption": {
+        "name": "Energieverbrauch Kühlen"
+      },
+      "cooling_energy": {
+        "name": "Erzeugte Kälte"
+      },
+      "lifetime_eer": {
+        "name": "EER gesamt"
       },
       "error_code": {
         "name": "Fehlercode"
