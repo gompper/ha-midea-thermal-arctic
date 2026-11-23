@@ -54,6 +54,46 @@ def _temperature(
     )
 
 
+def _power(
+    key: str, value_fn: Callable[[MideaHeatPump], float | None]
+) -> MideaSensorEntityDescription:
+    return MideaSensorEntityDescription(
+        key=key,
+        translation_key=key,
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=value_fn,
+    )
+
+
+def _ratio(
+    key: str, value_fn: Callable[[MideaHeatPump], float | None]
+) -> MideaSensorEntityDescription:
+    return MideaSensorEntityDescription(
+        key=key,
+        translation_key=key,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=value_fn,
+    )
+
+
+def _energy(
+    key: str, value_fn: Callable[[MideaHeatPump], float | None]
+) -> MideaSensorEntityDescription:
+    return MideaSensorEntityDescription(
+        key=key,
+        translation_key=key,
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        suggested_display_precision=2,
+        value_fn=value_fn,
+    )
+
+
 def _enum_name(value: OperatingState | OperationMode | None) -> str | None:
     return value.name.lower() if value is not None else None
 
@@ -138,31 +178,15 @@ SENSORS: tuple[MideaSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda device: device.readings.low_pressure,
     ),
-    MideaSensorEntityDescription(
-        key="power_consumption",
-        translation_key="power_consumption",
-        device_class=SensorDeviceClass.POWER,
-        native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        value_fn=lambda device: device.readings.power_consumption,
+    _power("power_consumption", lambda device: device.readings.power_consumption),
+    _power("heating_capacity", lambda device: device.readings.heating_capacity),
+    _ratio("cop", lambda device: device.readings.cop),
+    _power(
+        "cooling_power_consumption",
+        lambda device: device.readings.cooling_power_consumption,
     ),
-    MideaSensorEntityDescription(
-        key="heating_capacity",
-        translation_key="heating_capacity",
-        device_class=SensorDeviceClass.POWER,
-        native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        value_fn=lambda device: device.readings.heating_capacity,
-    ),
-    MideaSensorEntityDescription(
-        key="cop",
-        translation_key="cop",
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=2,
-        value_fn=lambda device: device.readings.cop,
-    ),
+    _power("cooling_capacity", lambda device: device.readings.cooling_capacity),
+    _ratio("eer", lambda device: device.readings.eer),
     MideaSensorEntityDescription(
         key="outdoor_unit_current",
         translation_key="outdoor_unit_current",
@@ -188,15 +212,20 @@ SENSORS: tuple[MideaSensorEntityDescription, ...] = (
         suggested_display_precision=0,
         value_fn=lambda device: device.readings.outdoor_unit_power,
     ),
-    MideaSensorEntityDescription(
-        key="energy_consumption",
-        translation_key="energy_consumption",
-        device_class=SensorDeviceClass.ENERGY,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        suggested_display_precision=2,
-        value_fn=lambda device: device.readings.energy_consumption,
+    _energy("energy_consumption", lambda device: device.readings.energy_consumption),
+    _energy("energy_produced", lambda device: device.readings.energy_produced),
+    _energy(
+        "heating_energy_consumption",
+        lambda device: device.readings.heating_energy_consumption,
     ),
+    _energy("heating_energy", lambda device: device.readings.heating_energy),
+    _ratio("lifetime_cop", lambda device: device.readings.lifetime_cop),
+    _energy(
+        "cooling_energy_consumption",
+        lambda device: device.readings.cooling_energy_consumption,
+    ),
+    _energy("cooling_energy", lambda device: device.readings.cooling_energy),
+    _ratio("lifetime_eer", lambda device: device.readings.lifetime_eer),
     MideaSensorEntityDescription(
         key="error_code",
         translation_key="error_code",

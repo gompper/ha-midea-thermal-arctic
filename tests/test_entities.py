@@ -59,6 +59,7 @@ async def _poll(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
         ("sensor.heat_pump_heat_exchanger_outlet_temperature", "32", "°C"),
         ("sensor.heat_pump_discharge_temperature", "52", "°C"),
         ("sensor.heat_pump_suction_temperature", "3", "°C"),
+        ("sensor.heat_pump_condenser_temperature", STATE_UNKNOWN, "°C"),
         ("sensor.heat_pump_water_temperature_delta", "4.0", "°C"),
         ("sensor.heat_pump_water_flow", "1.07", "m³/h"),
         ("sensor.heat_pump_compressor_frequency", "29", "Hz"),
@@ -67,10 +68,20 @@ async def _poll(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
         ("sensor.heat_pump_power_consumption", "0.87", "kW"),
         ("sensor.heat_pump_heating_capacity", "3.49", "kW"),
         ("sensor.heat_pump_cop", "4.01", None),
+        ("sensor.heat_pump_cooling_power_consumption", "0.0", "kW"),
+        ("sensor.heat_pump_cooling_capacity", "0.0", "kW"),
+        ("sensor.heat_pump_eer", STATE_UNKNOWN, None),
         ("sensor.heat_pump_outdoor_unit_current", "3", "A"),
         ("sensor.heat_pump_outdoor_unit_voltage", "223", "V"),
         ("sensor.heat_pump_outdoor_unit_power", "669.0", "W"),
         ("sensor.heat_pump_energy_consumption", "317.18", "kWh"),
+        ("sensor.heat_pump_energy_produced", "1150.07", "kWh"),
+        ("sensor.heat_pump_heating_energy_consumption", "317.14", "kWh"),
+        ("sensor.heat_pump_heating_energy_produced", "1149.92", "kWh"),
+        ("sensor.heat_pump_lifetime_cop", "3.62", None),
+        ("sensor.heat_pump_cooling_energy_consumption", STATE_UNKNOWN, "kWh"),
+        ("sensor.heat_pump_cooling_energy_produced", STATE_UNKNOWN, "kWh"),
+        ("sensor.heat_pump_lifetime_eer", STATE_UNKNOWN, None),
         ("sensor.heat_pump_error_code", "0", None),
         (POWER, "on", None),
         (MODE, "heating", None),
@@ -199,6 +210,28 @@ async def test_cop_is_unknown_while_idle(
     mock_unit.holding[151] = 0
     await _poll(hass, freezer)
     assert hass.states.get("sensor.heat_pump_cop").state == STATE_UNKNOWN
+
+
+@pytest.mark.usefixtures("init_integration")
+async def test_cooling_readings(
+    hass: HomeAssistant, mock_unit: MockModbusUnit, freezer: FrozenDateTimeFactory
+) -> None:
+    """Cooling reports through its own registers, and its counters start."""
+    mock_unit.holding.update(
+        {150: 0, 180: 412, 181: 103, 182: 400, 166: 2550, 170: 610, 171: 418}
+    )
+    await _poll(hass, freezer)
+    expected = {
+        "power_consumption": "0.0",
+        "cooling_capacity": "4.12",
+        "cooling_power_consumption": "1.03",
+        "eer": "4.0",
+        "cooling_energy_produced": "25.5",
+        "cooling_energy_consumption": "6.1",
+        "lifetime_eer": "4.18",
+    }
+    for key, state in expected.items():
+        assert hass.states.get(f"sensor.heat_pump_{key}").state == state, key
 
 
 @pytest.mark.usefixtures("init_integration")

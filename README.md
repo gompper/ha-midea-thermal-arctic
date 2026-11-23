@@ -106,16 +106,28 @@ Cooling and heating share one setpoint register, so switching to Cooling with a 
 | Outdoor unit power | current × voltage | W |
 | Error code | 124 | |
 | Water flow | 138 | m³/h |
-| Energy consumption | 143-144 | kWh |
 | Heating capacity | 148 | kW |
 | Power consumption | 150 | kW |
 | COP | 151 | |
+| Cooling capacity | 180 | kW |
+| Cooling power consumption | 181 | kW |
+| EER | 182 | |
+| Energy consumption | 143-144 | kWh |
+| Energy produced | 145-146 | kWh |
+| Heating energy produced | 158-159 | kWh |
+| Heating energy consumption | 162-163 | kWh |
+| Lifetime COP | 164 | |
+| Cooling energy produced | 165-166 | kWh |
+| Cooling energy consumption | 169-170 | kWh |
+| Lifetime EER | 171 | |
 
 Notes:
 
-- **Power consumption** reads 0 in Cooling mode on the 10 kW unit, even with the compressor running; not yet checked on the 4 kW unit. *Outdoor unit power* is the live figure then, though it excludes the water pump.
-- **COP** is unknown while the compressor is idle and when the register spikes above 10, which it does while the compressor ramps up.
-- **Energy consumption** keeps its last value while the heat pump is unreachable and ignores small dips, so the Energy dashboard and long-term statistics never see a false meter reset.
+- **Power consumption**, **Heating capacity** and **COP** cover heating only and read 0 in Cooling mode. The Midea table has their cooling counterparts in 180-182: *Cooling power consumption*, *Cooling capacity* and *EER*. These have not been checked on a cooling unit yet. *Outdoor unit power* is a live figure in every mode, though it excludes the water pump.
+- **COP** and **EER** are unknown while the compressor is idle and when the register spikes above 10, which it does while the compressor ramps up. The same applies to the lifetime ratios.
+- **Energy consumption** and **Energy produced** cover all modes; the heating and cooling counters split them up. Their ratio is the unit's overall seasonal performance.
+- The energy counters keep their last value while the heat pump is unreachable and ignore small dips, so the Energy dashboard and long-term statistics never see a false meter reset. A counter that has never counted, such as the cooling ones before the first cooling run, is unknown.
+- A temperature whose sensor is not fitted or broken is unknown rather than a made-up value. The 10 kW unit, for example, reports no condenser temperature (T3).
 - The device model shows the unit's nominal capacity (register 123).
 
 ## How it talks to the heat pump
@@ -148,6 +160,8 @@ uv pip install -r requirements_test.txt
 
 1. Raise `version` in `custom_components/midea_m_thermal/manifest.json` and merge it to `main`.
 2. Publish a GitHub release whose tag is that version with a `v` in front, e.g. `v1.2.0`. The release workflow fails if tag and manifest disagree.
+
+For a beta, use a version like `1.2.0b1`, tag it `v1.2.0b1` and mark the GitHub release as a pre-release. It can be released from a branch before merging. HACS offers it as an update only to users who enable beta versions for this repository; anyone can install it by picking the version in HACS's *Redownload* dialog.
 
 HACS offers the new release to users as an update.
 

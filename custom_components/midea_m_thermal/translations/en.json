@@ -117,6 +117,15 @@
       "cop": {
         "name": "COP"
       },
+      "cooling_power_consumption": {
+        "name": "Cooling power consumption"
+      },
+      "cooling_capacity": {
+        "name": "Cooling capacity"
+      },
+      "eer": {
+        "name": "EER"
+      },
       "outdoor_unit_current": {
         "name": "Outdoor unit current"
       },
@@ -128,6 +137,27 @@
       },
       "energy_consumption": {
         "name": "Energy consumption"
+      },
+      "energy_produced": {
+        "name": "Energy produced"
+      },
+      "heating_energy_consumption": {
+        "name": "Heating energy consumption"
+      },
+      "heating_energy": {
+        "name": "Heating energy produced"
+      },
+      "lifetime_cop": {
+        "name": "Lifetime COP"
+      },
+      "cooling_energy_consumption": {
+        "name": "Cooling energy consumption"
+      },
+      "cooling_energy": {
+        "name": "Cooling energy produced"
+      },
+      "lifetime_eer": {
+        "name": "Lifetime EER"
       },
       "error_code": {
         "name": "Error code"

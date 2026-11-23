@@ -54,6 +54,27 @@
       "cop": {
         "default": "mdi:leaf"
       },
+      "cooling_capacity": {
+        "default": "mdi:snowflake"
+      },
+      "eer": {
+        "default": "mdi:leaf"
+      },
+      "energy_produced": {
+        "default": "mdi:heat-wave"
+      },
+      "heating_energy": {
+        "default": "mdi:heat-wave"
+      },
+      "lifetime_cop": {
+        "default": "mdi:leaf"
+      },
+      "cooling_energy": {
+        "default": "mdi:snowflake"
+      },
+      "lifetime_eer": {
+        "default": "mdi:leaf"
+      },
       "error_code": {
         "default": "mdi:alert-circle-outline"
       }
