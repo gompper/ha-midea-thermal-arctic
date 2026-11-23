@@ -18,7 +18,7 @@ It is set up in the UI, knows the heat pump's register map itself, and uses the 
 
 | | |
 |---|---|
-| Heat pump | Midea M-Thermal Arctic R290, tested on the 4 kW unit (the test data comes from a 10 kW unit) |
+| Heat pump | Midea M-Thermal Arctic R290, tested on the 4 kW unit (the test data comes from a 4 kW and a 10 kW unit) |
 | Connection | RS-485 on the **wired controller** (H1/H2), not the outdoor unit |
 | Gateway | Any Modbus TCP-to-RTU gateway, e.g. Elfin EW11A (WiFi) or EE11A (Ethernet) |
 | Home Assistant | 2026.10 or later |
@@ -79,7 +79,7 @@ With the default device name *Heat pump*, entity IDs start with `heat_pump_`.
 | Entity | Register | Notes |
 |---|---|---|
 | Power (switch) | 0, bit 1 | Zone 1 water temperature control. Other bits are left alone |
-| Mode (select) | 1 | Auto, Cooling, Heating |
+| Mode (select) | 1 | Auto, Cooling, Heating. Only Heating while the installer has cooling disabled (register 210, bit 9) |
 | Target temperature (number) | 2, low byte | Min/max follow the active mode, from the heat pump's own limits (registers 201-204): e.g. Cooling 5-25 °C, Heating and Auto 25-55 °C |
 
 Cooling and heating share one setpoint register, so switching to Cooling with a setpoint above the cooling maximum pulls it down to that maximum. Every setpoint write re-reads the mode and is clamped to its range, even if the mode was changed on the wired controller since the last poll.
@@ -120,6 +120,37 @@ Cooling and heating share one setpoint register, so switching to Cooling with a 
 | Cooling energy produced | 165-166 | kWh |
 | Cooling energy consumption | 169-170 | kWh |
 | Lifetime EER | 171 | |
+| Error | 124 | The code the wired controller shows, such as *E8: Water flow failure* |
+| Climate curve target temperature | 136 | °C |
+| Ambient heat | 149 | kW |
+| Ambient heat energy | 160-161 | kWh |
+| Fan speed | 102 | rpm |
+| Compressor operating time | 122 | h |
+| Circulation pump duty cycle | 192 | % |
+| Room temperature (Ta) | 114 | °C, only with room temperature control enabled |
+
+Diagnostic sensors, most of them disabled by default: refrigerant liquid (T2, 112), gas (T2B, 113) and outdoor pipe (TL, 191) temperatures, inverter module temperature (TF, 135), expansion valve opening (103), compressor target frequency (132), DC bus current and voltage (133, 134), current limit code (139) and the extended error code (188).
+
+### Binary sensors
+
+| Binary sensor | Register | Created when |
+|---|---|---|
+| Defrosting | 128, bit 1 | always |
+| Frost protection | 128, bit 2 | always |
+| Oil return | 128, bit 3 | always (diagnostic) |
+| Circulation pump (Pump_i) | 129, bit 3 | always |
+| External circulation pump (Pump_o) | 129, bit 6 | always |
+| Alarm | 129, bit 12 | always |
+| Crankcase heater, 3-way valves SV1-SV3 | 129, bits 10, 4, 5, 9 | always (diagnostic, disabled) |
+| Backup heater (IBH1) | 129, bit 0 | the backup heater is enabled (198, bit 10) |
+| Backup heater stage 2 (IBH2) | 129, bit 1 | the same, on a three-phase unit |
+| Tank heater (TBH) | 129, bit 2 | the tank heater is enabled (198, bit 15) |
+| Auxiliary heat source (AHS) | 129, bit 14 | an auxiliary heat source is enabled (198, bit 14) |
+| Hot water circulation pump (Pump_d) | 129, bit 7 | hot water is enabled (210, bit 15) |
+| Zone 2 mixing pump (Pump_c) | 129, bit 8 | double zone is enabled (211, bit 3) |
+| Room thermostat heating/cooling demand | 128, bits 6, 7 | the room thermostat is enabled (210, bit 3) |
+
+Which functions the unit has is read once at setup. After changing them in the installer menu, reload the integration.
 
 Notes:
 
@@ -128,11 +159,11 @@ Notes:
 - **Energy consumption** and **Energy produced** cover all modes; the heating and cooling counters split them up. Their ratio is the unit's overall seasonal performance.
 - The energy counters keep their last value while the heat pump is unreachable and ignore small dips, so the Energy dashboard and long-term statistics never see a false meter reset. A counter that has never counted, such as the cooling ones before the first cooling run, is unknown.
 - A temperature whose sensor is not fitted or broken is unknown rather than a made-up value such as 127 °C or 255 °C.
-- The device model shows the unit's nominal capacity (register 123).
+- The device model shows the unit's sub-model (register 190) and nominal capacity (register 123), the software version the hydraulic module's (register 130).
 
 ## How it talks to the heat pump
 
-Each poll, every 30 seconds, makes two requests: registers 0-2 and one block of 100-199. The setpoint limits in 201-204 are read once, one register per request, because the controller refuses multi-register reads above 200. If it refuses them entirely, the documented ranges are used.
+Each poll, every 30 seconds, makes two requests: registers 0-2 and one block of 100-199. The setpoint limits in 201-204 and the function settings in 210-211 are read once, one register per request, because the controller refuses multi-register reads above 200. If it refuses the limits, the documented ranges are used; if it refuses the function settings, every mode is offered and optional hardware is left out.
 
 A dropped connection makes entities unavailable until the next successful poll, without reloading the integration. After three timeouts in a row, the connection is re-opened, because some serial gateways keep their socket open while the RS-485 side has stopped answering.
 

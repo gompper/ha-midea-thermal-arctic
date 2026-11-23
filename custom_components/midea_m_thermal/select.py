@@ -43,6 +43,21 @@ class MideaModeSelect(MideaEntity, SelectEntity):
     entity_description: MideaSelectEntityDescription
 
     @property
+    def options(self) -> list[str]:
+        """Every mode, or only heating while the installer disabled cooling.
+
+        Auto switches between heating and cooling, so it needs cooling too. A
+        mode set on the wired controller stays listed so the state can show it.
+        """
+        device = self.coordinator.device
+        if device.cooling_enabled:
+            return list(self.entity_description.options or [])
+        options = [ModeSetting.HEATING.name.lower()]
+        if (current := self.current_option) is not None and current not in options:
+            options.append(current)
+        return options
+
+    @property
     def current_option(self) -> str | None:
         """Return the mode the heat pump is told to run in."""
         mode = self.coordinator.device.control.mode

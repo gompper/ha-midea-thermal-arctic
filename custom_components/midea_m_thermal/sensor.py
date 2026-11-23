@@ -13,6 +13,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
+    PERCENTAGE,
+    REVOLUTIONS_PER_MINUTE,
     EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -21,6 +23,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfPressure,
     UnitOfTemperature,
+    UnitOfTime,
     UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -28,7 +31,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import MideaConfigEntry
 from .entity import MideaEntity, MideaEntityDescription
-from .m_thermal_modbus import MideaHeatPump, OperatingState, OperationMode
+from .m_thermal_modbus import ERROR_CODES, MideaHeatPump, OperatingState, OperationMode
 
 PARALLEL_UPDATES = 0
 
@@ -42,7 +45,11 @@ class MideaSensorEntityDescription(SensorEntityDescription, MideaEntityDescripti
 
 
 def _temperature(
-    key: str, value_fn: Callable[[MideaHeatPump], float | int | None]
+    key: str,
+    value_fn: Callable[[MideaHeatPump], float | int | None],
+    *,
+    diagnostic: bool = False,
+    supported_fn: Callable[[MideaHeatPump], bool] = lambda _: True,
 ) -> MideaSensorEntityDescription:
     return MideaSensorEntityDescription(
         key=key,
@@ -50,6 +57,9 @@ def _temperature(
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC if diagnostic else None,
+        entity_registry_enabled_default=not diagnostic,
+        supported_fn=supported_fn,
         value_fn=value_fn,
     )
 
@@ -232,7 +242,131 @@ SENSORS: tuple[MideaSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda device: device.readings.error_code,
     ),
+    MideaSensorEntityDescription(
+        key="error",
+        translation_key="error",
+        device_class=SensorDeviceClass.ENUM,
+        options=["none", *(code.lower() for code in ERROR_CODES.values()), "unknown"],
+        value_fn=lambda device: _lower(device.readings.error),
+    ),
+    MideaSensorEntityDescription(
+        key="error_code_extended",
+        translation_key="error_code_extended",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda device: device.readings.error_code_extended,
+    ),
+    _temperature(
+        "curve_target_temperature",
+        lambda device: device.readings.curve_target_temperature,
+    ),
+    _temperature(
+        "room_temperature",
+        lambda device: device.readings.room_temperature,
+        supported_fn=lambda device: device.has_function("room_temperature_control"),
+    ),
+    _power(
+        "renewable_heating_power",
+        lambda device: device.readings.renewable_heating_power,
+    ),
+    _energy(
+        "renewable_heating_energy",
+        lambda device: device.readings.renewable_heating_energy,
+    ),
+    MideaSensorEntityDescription(
+        key="fan_speed",
+        translation_key="fan_speed",
+        native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda device: device.readings.fan_speed,
+    ),
+    MideaSensorEntityDescription(
+        key="compressor_hours",
+        translation_key="compressor_hours",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda device: device.readings.compressor_hours,
+    ),
+    _temperature(
+        "refrigerant_liquid_temperature",
+        lambda device: device.readings.refrigerant_liquid_temperature,
+        diagnostic=True,
+    ),
+    _temperature(
+        "refrigerant_gas_temperature",
+        lambda device: device.readings.refrigerant_gas_temperature,
+        diagnostic=True,
+    ),
+    _temperature(
+        "refrigerant_pipe_temperature",
+        lambda device: device.readings.refrigerant_pipe_temperature,
+        diagnostic=True,
+    ),
+    _temperature(
+        "module_temperature",
+        lambda device: device.readings.module_temperature,
+        diagnostic=True,
+    ),
+    MideaSensorEntityDescription(
+        key="expansion_valve",
+        translation_key="expansion_valve",
+        native_unit_of_measurement="P",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda device: device.readings.expansion_valve,
+    ),
+    MideaSensorEntityDescription(
+        key="target_frequency",
+        translation_key="target_frequency",
+        device_class=SensorDeviceClass.FREQUENCY,
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda device: device.readings.target_frequency,
+    ),
+    MideaSensorEntityDescription(
+        key="dc_bus_current",
+        translation_key="dc_bus_current",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda device: device.readings.dc_bus_current,
+    ),
+    MideaSensorEntityDescription(
+        key="dc_bus_voltage",
+        translation_key="dc_bus_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda device: device.readings.dc_bus_voltage,
+    ),
+    MideaSensorEntityDescription(
+        key="current_limit",
+        translation_key="current_limit",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda device: device.readings.current_limit,
+    ),
+    MideaSensorEntityDescription(
+        key="pump_duty_cycle",
+        translation_key="pump_duty_cycle",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda device: device.readings.pump_duty_cycle,
+    ),
 )
+
+
+def _lower(value: str | None) -> str | None:
+    return value.lower() if value is not None else None
 
 
 async def async_setup_entry(
@@ -249,6 +383,7 @@ async def async_setup_entry(
             else MideaSensor
         )(coordinator, description)
         for description in SENSORS
+        if description.supported_fn(coordinator.device)
     )
 
 

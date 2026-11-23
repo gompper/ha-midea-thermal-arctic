@@ -3,6 +3,8 @@
 The wired controller serves three blocks. 0-22 (control) and 100-199
 (operating parameters) answer bulk reads. 200-290 (configuration) refuses
 them, so every register there is read on its own.
+
+Bit and value meanings follow Midea's Modbus mapping 0052003044313 V.G.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from modbus_connection.model import (
     uint32,
 )
 
-from .enums import ModeSetting, OperatingState, OperationMode
+from .enums import ERROR_CODES, ModeSetting, OperatingState, OperationMode, SubModel
 
 # Anything that answered a zone setpoint limit outside this is not a limit.
 _MAX_SETPOINT = 99
@@ -109,6 +111,103 @@ class Readings(Component):
     error_code = integer(124, signed=False)
     water_flow = gauge(138, 0.01, signed=False, unit="m³/h")
 
+    fan_speed = integer(102, signed=False, unit="rpm")
+    expansion_valve = integer(103, signed=False, unit="P")
+    """EXV1 opening, in valve steps."""
+
+    refrigerant_liquid_temperature = _temperature(112)
+    """T2, refrigerant liquid side."""
+
+    refrigerant_gas_temperature = _temperature(113)
+    """T2B, refrigerant gas side."""
+
+    room_temperature = _temperature(114)
+    """Ta. Reads 25 when there is no room sensor, so only trust it while room
+    temperature control is enabled."""
+
+    compressor_hours = integer(122, signed=False, unit="h")
+
+    defrosting = bit(128, 1)
+    anti_freeze = bit(128, 2)
+    """Water loop frost protection running."""
+
+    oil_return = bit(128, 3)
+    thermostat_heating = bit(128, 6)
+    """Room thermostat HT input closed."""
+
+    thermostat_cooling = bit(128, 7)
+    """Room thermostat CL input closed."""
+
+    backup_heater_1 = bit(129, 0)
+    """IBH1, the first stage of the hydraulic module's backup heater."""
+
+    backup_heater_2 = bit(129, 1)
+    tank_heater = bit(129, 2)
+    """TBH, the electric heater in the hot water tank."""
+
+    internal_pump = bit(129, 3)
+    """Pump_i, the unit's own circulation pump."""
+
+    valve_sv1 = bit(129, 4)
+    valve_sv2 = bit(129, 5)
+    external_pump = bit(129, 6)
+    """Pump_o, an external circulation pump."""
+
+    dhw_pump = bit(129, 7)
+    """Pump_d, the hot water circulation pump."""
+
+    mixing_pump = bit(129, 8)
+    """Pump_c, the Zone 2 mixing loop pump."""
+
+    valve_sv3 = bit(129, 9)
+    crankcase_heater = bit(129, 10)
+    alarm = bit(129, 12)
+    auxiliary_heat_source = bit(129, 14)
+    """AHS, an external boiler or other heat source."""
+
+    software_version = integer(130, signed=False)
+    """Hydraulic module (IDU) software, 1-99."""
+
+    target_frequency = integer(132, signed=False, unit="Hz")
+    dc_bus_current = gauge(133, 0.1, signed=False, unit="A")
+    dc_bus_voltage = gauge(134, 10, signed=False, unit="V")
+    module_temperature = _temperature(135)
+    """TF, the inverter module on the outdoor PCB."""
+
+    curve_target_temperature = _temperature(136)
+    """Zone 1 water setpoint calculated from the climate curve."""
+
+    current_limit = integer(139, signed=False)
+    """Outdoor unit current limitation code."""
+
+    renewable_heating_power = gauge(149, 0.01, signed=False, unit="kW")
+    """Heat taken from the outside air right now."""
+
+    renewable_heating_energy = _energy(160)
+    """Lifetime heat taken from the outside air in heating mode."""
+
+    _error = integer(124, signed=False)
+    error_code_extended = integer(188, signed=False)
+    """Register 188, Midea's error code table 2. Only the raw value is
+    exposed: the table's bit layout is not documented clearly enough."""
+
+    protocol_version = integer(187, signed=False)
+    """Modbus protocol version, 41 for V4.1."""
+
+    three_phase = bit(189, 7)
+    sub_model = enum(190, SubModel)
+
+    refrigerant_pipe_temperature = _temperature(191)
+    """TL, the outdoor unit refrigerant pipe."""
+
+    pump_duty_cycle = gauge(192, 0.1, signed=False, unit="%")
+    """Pump_i feedback PWM duty cycle."""
+
+    energy_metering = bit(198, 8)
+    backup_heater_enabled = bit(198, 10)
+    auxiliary_heat_source_enabled = bit(198, 14)
+    tank_heater_enabled = bit(198, 15)
+
     energy_consumption = _energy(143)
     """Lifetime electrical energy, all modes."""
 
@@ -172,6 +271,19 @@ class Readings(Component):
         return _efficiency(self._lifetime_eer)
 
     @property
+    def error(self) -> str | None:
+        """The current error's code as the wired controller shows it, such as E8.
+
+        "none" without an error, "unknown" for a value the table lacks.
+        """
+        raw = self._error
+        if raw is None:
+            return None
+        if raw == 0:
+            return "none"
+        return ERROR_CODES.get(raw, "unknown")
+
+    @property
     def outdoor_unit_power(self) -> float | None:
         """Outdoor unit power in W, from its current and voltage."""
         current = self.outdoor_unit_current
@@ -216,3 +328,22 @@ def _sane_range(low: int | None, high: int | None) -> tuple[int, int] | None:
     if low is None or high is None or not 0 <= low < high <= _MAX_SETPOINT:
         return None
     return low, high
+
+
+class Functions(Component):
+    """Which functions the installer enabled (holding registers 210-211).
+
+    Read once: they only change in the installer menu. Configuration registers
+    answer one register per request.
+    """
+
+    max_span = 1
+
+    room_thermostat = bit(210, 3)
+    room_temperature_control = bit(210, 4)
+    heating = bit(210, 7)
+    cooling = bit(210, 9)
+    domestic_hot_water = bit(210, 15)
+    buffer_tank = bit(211, 1)
+    double_zone = bit(211, 3)
+    smart_grid = bit(211, 7)

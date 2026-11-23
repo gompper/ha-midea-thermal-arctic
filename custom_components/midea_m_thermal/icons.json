@@ -1,5 +1,52 @@
 {
   "entity": {
+    "binary_sensor": {
+      "defrosting": {
+        "default": "mdi:snowflake-melt"
+      },
+      "anti_freeze": {
+        "default": "mdi:snowflake-alert"
+      },
+      "oil_return": {
+        "default": "mdi:oil"
+      },
+      "internal_pump": {
+        "default": "mdi:pump"
+      },
+      "external_pump": {
+        "default": "mdi:pump"
+      },
+      "backup_heater": {
+        "default": "mdi:heating-coil"
+      },
+      "backup_heater_2": {
+        "default": "mdi:heating-coil"
+      },
+      "tank_heater": {
+        "default": "mdi:water-boiler"
+      },
+      "auxiliary_heat_source": {
+        "default": "mdi:fire"
+      },
+      "dhw_pump": {
+        "default": "mdi:pump"
+      },
+      "mixing_pump": {
+        "default": "mdi:pump"
+      },
+      "crankcase_heater": {
+        "default": "mdi:heating-coil"
+      },
+      "valve_sv1": {
+        "default": "mdi:valve"
+      },
+      "valve_sv2": {
+        "default": "mdi:valve"
+      },
+      "valve_sv3": {
+        "default": "mdi:valve"
+      }
+    },
     "number": {
       "target_temperature": {
         "default": "mdi:thermometer-water"
@@ -76,6 +123,36 @@
         "default": "mdi:leaf"
       },
       "error_code": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "error": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "curve_target_temperature": {
+        "default": "mdi:chart-bell-curve-cumulative"
+      },
+      "renewable_heating_power": {
+        "default": "mdi:weather-windy"
+      },
+      "renewable_heating_energy": {
+        "default": "mdi:weather-windy"
+      },
+      "fan_speed": {
+        "default": "mdi:fan"
+      },
+      "compressor_hours": {
+        "default": "mdi:timer-outline"
+      },
+      "expansion_valve": {
+        "default": "mdi:valve"
+      },
+      "pump_duty_cycle": {
+        "default": "mdi:pump"
+      },
+      "current_limit": {
+        "default": "mdi:current-ac"
+      },
+      "error_code_extended": {
         "default": "mdi:alert-circle-outline"
       }
     },

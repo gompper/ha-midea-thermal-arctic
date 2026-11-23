@@ -52,14 +52,15 @@ async def test_setup_and_unload(
 async def test_device_info(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
-    """The heat pump is one device, named after the entry, with its capacity."""
+    """The heat pump is one device, named after the entry, with its model."""
     [device] = dr.async_entries_for_config_entry(
         dr.async_get(hass), init_integration.entry_id
     )
     assert device.identifiers == {(DOMAIN, init_integration.entry_id)}
     assert device.name == "Heat pump"
     assert device.manufacturer == "Midea"
-    assert device.model == "M-Thermal 10 kW"
+    assert device.model == "M-Thermal R290-A 10 kW"
+    assert device.sw_version == "19"
 
 
 async def test_setup_retries_when_unreachable(

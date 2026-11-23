@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import timedelta
 
 from freezegun.api import FrozenDateTimeFactory
-from modbus_connection import IllegalDataValueError, ModbusConnectionError
+from modbus_connection import (
+    IllegalDataAddressError,
+    IllegalDataValueError,
+    ModbusConnectionError,
+)
 from modbus_connection.mock import MockModbusUnit
 import pytest
 from pytest_homeassistant_custom_component.common import (
@@ -33,6 +37,9 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import device_registry as dr
+
+from .conftest import SNAPSHOT_4KW, as_raw
 
 SCAN = timedelta(seconds=30)
 TARGET = "number.heat_pump_target_temperature"
@@ -83,6 +90,18 @@ async def _poll(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
         ("sensor.heat_pump_cooling_energy_produced", STATE_UNKNOWN, "kWh"),
         ("sensor.heat_pump_lifetime_eer", STATE_UNKNOWN, None),
         ("sensor.heat_pump_error_code", "0", None),
+        ("sensor.heat_pump_error", "none", None),
+        ("sensor.heat_pump_climate_curve_target_temperature", STATE_UNKNOWN, "°C"),
+        ("sensor.heat_pump_ambient_heat", "2.89", "kW"),
+        ("sensor.heat_pump_ambient_heat_energy", "995.5", "kWh"),
+        ("sensor.heat_pump_fan_speed", "450", "rpm"),
+        ("sensor.heat_pump_compressor_operating_time", "338", "h"),
+        ("sensor.heat_pump_circulation_pump_duty_cycle", "15.0", "%"),
+        ("binary_sensor.heat_pump_defrosting", "off", None),
+        ("binary_sensor.heat_pump_frost_protection", "off", None),
+        ("binary_sensor.heat_pump_circulation_pump", "on", None),
+        ("binary_sensor.heat_pump_external_circulation_pump", "on", None),
+        ("binary_sensor.heat_pump_alarm", "off", None),
         (POWER, "on", None),
         (MODE, "heating", None),
         (TARGET, "28", "°C"),
@@ -255,6 +274,102 @@ async def test_energy_holds_through_outages_and_glitches(
     mock_unit.holding[144] = 31800
     await _poll(hass, freezer)
     assert hass.states.get(ENERGY).state == "318.0"
+
+
+@pytest.mark.usefixtures("init_integration")
+@pytest.mark.parametrize(
+    "entity_id",
+    [
+        # The 10 kW unit has no backup heater, no room sensor and no thermostat.
+        "binary_sensor.heat_pump_backup_heater",
+        "binary_sensor.heat_pump_backup_heater_stage_2",
+        "binary_sensor.heat_pump_tank_heater",
+        "binary_sensor.heat_pump_auxiliary_heat_source",
+        "binary_sensor.heat_pump_hot_water_circulation_pump",
+        "binary_sensor.heat_pump_zone_2_mixing_pump",
+        "binary_sensor.heat_pump_room_thermostat_heating_demand",
+        "sensor.heat_pump_room_temperature",
+        # Detail readings start disabled.
+        "sensor.heat_pump_refrigerant_liquid_temperature",
+        "sensor.heat_pump_dc_bus_voltage",
+        "binary_sensor.heat_pump_3_way_valve_sv1",
+    ],
+)
+async def test_entities_left_out(hass: HomeAssistant, entity_id: str) -> None:
+    """Entities for what the unit lacks are not created; details start off."""
+    assert hass.states.get(entity_id) is None
+
+
+@pytest.mark.usefixtures("init_integration")
+@pytest.mark.parametrize(
+    ("raw", "state"), [(0, "none"), (9, "e8"), (31, "pb"), (200, "unknown")]
+)
+async def test_error_shows_the_controller_code(
+    hass: HomeAssistant,
+    mock_unit: MockModbusUnit,
+    freezer: FrozenDateTimeFactory,
+    raw: int,
+    state: str,
+) -> None:
+    """Register 124 maps to the code the wired controller displays."""
+    mock_unit.holding[124] = raw
+    await _poll(hass, freezer)
+    assert hass.states.get("sensor.heat_pump_error").state == state
+
+
+async def test_mode_offers_only_heating_without_cooling(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+) -> None:
+    """With cooling disabled by the installer, cooling and auto are not offered."""
+    mock_unit.holding[210] &= ~(1 << 9)
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(MODE).attributes["options"] == ["heating"]
+
+
+async def test_mode_keeps_all_options_when_functions_are_refused(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+) -> None:
+    """A controller that hides its function settings keeps every mode."""
+    mock_unit.fail_read(210, IllegalDataAddressError())
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(MODE).attributes["options"] == [
+        "auto",
+        "cooling",
+        "heating",
+    ]
+
+
+async def test_entities_follow_the_4kw_unit(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+) -> None:
+    """The 4 kW read: backup heater shown, heating only, model named."""
+    mock_unit.load_raw(as_raw(SNAPSHOT_4KW))
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.states.get("binary_sensor.heat_pump_backup_heater").state == "off"
+    assert hass.states.get("binary_sensor.heat_pump_backup_heater_stage_2") is None
+    assert hass.states.get(MODE).attributes["options"] == ["heating"]
+    assert (
+        hass.states.get("sensor.heat_pump_climate_curve_target_temperature").state
+        == "32"
+    )
+    [device] = dr.async_entries_for_config_entry(
+        dr.async_get(hass), mock_config_entry.entry_id
+    )
+    assert device.model == "M-Thermal R290-A 4 kW"
+    assert device.sw_version == "24"
 
 
 async def test_diagnostics(

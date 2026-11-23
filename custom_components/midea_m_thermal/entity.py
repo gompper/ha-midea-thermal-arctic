@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from modbus_connection import ModbusError
@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import MideaDataUpdateCoordinator
+from .m_thermal_modbus import MideaHeatPump
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -21,6 +22,12 @@ class MideaEntityDescription(EntityDescription):
 
     component: str
     """Attribute name of the sub-system on MideaHeatPump that it reads."""
+
+    supported_fn: Callable[[MideaHeatPump], bool] = lambda _: True
+    """Whether this heat pump has what the entity shows, decided at setup.
+
+    An entity for hardware or a function the unit lacks is not created.
+    """
 
 
 class MideaEntity(CoordinatorEntity[MideaDataUpdateCoordinator]):
