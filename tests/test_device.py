@@ -68,7 +68,7 @@ async def test_decodes_the_register_dump(device: MideaHeatPump) -> None:
     assert readings.cooling_energy is None  # never cooled
     assert readings.cooling_energy_consumption is None
     assert readings.lifetime_eer is None
-    assert readings.condenser_temperature is None  # 65535: no T3 sensor
+    assert readings.condenser_temperature == -1  # 65535, the coil while heating
     assert readings.capacity == 10
 
 
@@ -105,7 +105,16 @@ async def test_decodes_negative_temperatures(
     assert device.readings.outdoor_temperature == -5
 
 
-@pytest.mark.parametrize("raw", [0x7F, 0xFF, 0x7FFF, 0xFFFF])
+async def test_minus_one_degree_is_a_temperature(
+    device: MideaHeatPump, mock_unit: MockModbusUnit
+) -> None:
+    """0xFFFF is -1 °C, not an absent sensor."""
+    mock_unit.holding[107] = 0xFFFF
+    await device.async_update()
+    assert device.readings.outdoor_temperature == -1
+
+
+@pytest.mark.parametrize("raw", [0x7F, 0xFF, 0x7FFF])
 async def test_absent_temperature_sensor_is_no_value(
     device: MideaHeatPump, mock_unit: MockModbusUnit, raw: int
 ) -> None:

@@ -127,7 +127,7 @@ Notes:
 - **COP** and **EER** are unknown while the compressor is idle and when the register spikes above 10, which it does while the compressor ramps up. The same applies to the lifetime ratios.
 - **Energy consumption** and **Energy produced** cover all modes; the heating and cooling counters split them up. Their ratio is the unit's overall seasonal performance.
 - The energy counters keep their last value while the heat pump is unreachable and ignore small dips, so the Energy dashboard and long-term statistics never see a false meter reset. A counter that has never counted, such as the cooling ones before the first cooling run, is unknown.
-- A temperature whose sensor is not fitted or broken is unknown rather than a made-up value. The 10 kW unit, for example, reports no condenser temperature (T3).
+- A temperature whose sensor is not fitted or broken is unknown rather than a made-up value such as 127 °C or 255 °C.
 - The device model shows the unit's nominal capacity (register 123).
 
 ## How it talks to the heat pump
