@@ -16,9 +16,10 @@ from custom_components.midea_m_thermal.m_thermal_modbus import (
     ModeSetting,
     OperatingState,
     OperationMode,
+    SubModel,
 )
 
-from .conftest import ReusableMockConnection
+from .conftest import SNAPSHOT_4KW, ReusableMockConnection, as_raw
 
 
 @pytest.fixture
@@ -72,24 +73,87 @@ async def test_decodes_the_register_dump(device: MideaHeatPump) -> None:
     assert readings.capacity == 10
 
 
+async def test_decodes_the_4kw_dump(
+    device: MideaHeatPump, mock_unit: MockModbusUnit
+) -> None:
+    """The full read of a 4 kW unit decodes status, outputs and functions."""
+    mock_unit.load_raw(as_raw(SNAPSHOT_4KW))
+    await device.async_update()
+
+    readings = device.readings
+    assert readings.sub_model is SubModel.R290_A
+    assert readings.sub_model.label == "R290-A"
+    assert readings.capacity == 4
+    assert readings.software_version == 24
+    assert readings.protocol_version == 41
+    assert readings.three_phase is False
+    assert readings.fan_speed == 490
+    assert readings.compressor_hours == 373
+    assert readings.refrigerant_liquid_temperature == 28
+    assert readings.refrigerant_gas_temperature == 46
+    assert readings.refrigerant_pipe_temperature == -14
+    assert readings.module_temperature == 15
+    assert readings.curve_target_temperature == 32
+    assert readings.dc_bus_current == pytest.approx(2.8)
+    assert readings.dc_bus_voltage == pytest.approx(370)
+    assert readings.renewable_heating_power == pytest.approx(1.58)
+    assert readings.renewable_heating_energy == pytest.approx(925.51)
+    assert readings.pump_duty_cycle == pytest.approx(14.4)
+    assert readings.error == "none"
+    # 129 = 104: Pump_i, SV2 and Pump_o on.
+    assert readings.internal_pump is True
+    assert readings.valve_sv2 is True
+    assert readings.external_pump is True
+    assert readings.backup_heater_1 is False
+    assert readings.defrosting is False
+    # 198 = 1808: backup heater enabled, no tank heater or other heat source.
+    assert readings.backup_heater_enabled is True
+    assert readings.tank_heater_enabled is False
+    assert readings.auxiliary_heat_source_enabled is False
+
+    functions = device.functions
+    assert functions is not None
+    assert functions.heating is True
+    assert functions.cooling is False
+    assert functions.domestic_hot_water is False
+    assert functions.room_temperature_control is False
+    assert functions.double_zone is False
+    assert device.cooling_enabled is False
+    assert device.has_function("heating") is True
+
+
+async def test_refused_functions_count_as_unknown(
+    device: MideaHeatPump, mock_unit: MockModbusUnit
+) -> None:
+    """A controller without the function registers keeps every mode."""
+    mock_unit.fail_read(210, IllegalDataAddressError())
+    report = await device.async_update()
+    assert report.updated == {"control", "readings"}
+    assert device.functions is None
+    assert device.cooling_enabled is True
+    assert device.has_function("domestic_hot_water") is False
+
+
 async def test_reads_only_what_the_controller_serves(
     device: MideaHeatPump, mock_unit: MockModbusUnit
 ) -> None:
     """Two bulk reads per poll; the configuration block one register at a time."""
     await device.async_update()
-    # The limits come first, from the device's one-time setup.
+    # The limits and functions come first, from the device's one-time setup.
     assert [(e.address, e.count) for e in mock_unit.read_events] == [
         (201, 1),
         (202, 1),
         (203, 1),
         (204, 1),
+        (210, 1),
+        (211, 1),
         (0, 3),
         (100, 100),
     ]
 
     mock_unit.read_events.clear()
     await device.async_update()
-    # The limits are read once.
+    # The limits and functions are read once.
     assert [(e.address, e.count) for e in mock_unit.read_events] == [
         (0, 3),
         (100, 100),

@@ -1,8 +1,11 @@
 """Fixtures for the Midea M-Thermal tests.
 
 The heat pump is modbus-connection's in-memory mock, loaded with the register
-dump of a real Thermal Arctic R290 10 kW. Home Assistant's shared-connection
-code runs for real; only the backend under it is swapped.
+dump of a real Thermal Arctic R290 10 kW. That dump predates the function
+settings, so registers 210-211 in it are set by hand: heating and cooling on.
+registers_4kw.json is a full read of a 4 kW unit with cooling disabled and a
+backup heater enabled. Home Assistant's shared-connection code runs for real;
+only the backend under it is swapped.
 """
 
 from __future__ import annotations
@@ -23,9 +26,17 @@ from homeassistant.core import HomeAssistant
 UNIT_ID = 2
 ENTRY_DATA = {CONF_HOST: "192.0.2.10", CONF_PORT: 8899, CONF_UNIT_ID: UNIT_ID}
 
-SNAPSHOT = json.loads(
-    (Path(__file__).parent / "fixtures" / "registers.json").read_text()
-)
+FIXTURES = Path(__file__).parent / "fixtures"
+SNAPSHOT = json.loads((FIXTURES / "registers.json").read_text())
+SNAPSHOT_4KW = json.loads((FIXTURES / "registers_4kw.json").read_text())
+
+
+def as_raw(snapshot: dict) -> dict[str, dict[int, int]]:
+    """A JSON register dump keyed by int addresses, for load_raw()."""
+    return {
+        space: {int(address): value for address, value in values.items()}
+        for space, values in snapshot.items()
+    }
 
 
 class ReusableMockConnection(MockModbusConnection):
@@ -53,12 +64,7 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
 def mock_connection() -> Generator[ReusableMockConnection]:
     """Back every shared Modbus connection with one in-memory heat pump."""
     connection = ReusableMockConnection()
-    connection.for_unit(UNIT_ID).load_raw(
-        {
-            space: {int(address): value for address, value in values.items()}
-            for space, values in SNAPSHOT.items()
-        }
-    )
+    connection.for_unit(UNIT_ID).load_raw(as_raw(SNAPSHOT))
     with patch(
         "homeassistant.components.modbus.connection.ModbusConnection",
         return_value=connection,

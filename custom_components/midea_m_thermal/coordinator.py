@@ -83,10 +83,17 @@ class MideaDataUpdateCoordinator(DataUpdateCoordinator[UpdateReport]):
     @cached_property
     def device_info(self) -> DeviceInfo:
         """Describe the heat pump to the device registry."""
-        capacity = self.device.readings.capacity
+        readings = self.device.readings
+        model = "M-Thermal"
+        if readings.sub_model is not None:
+            model += f" {readings.sub_model.label}"
+        if readings.capacity:
+            model += f" {readings.capacity} kW"
+        software = readings.software_version
         return DeviceInfo(
             identifiers={(DOMAIN, self.config_entry.entry_id)},
             manufacturer=MANUFACTURER,
-            model=f"M-Thermal {capacity} kW" if capacity else "M-Thermal",
+            model=model,
             name=self.config_entry.title,
+            sw_version=str(software) if software else None,
         )

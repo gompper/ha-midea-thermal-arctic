@@ -7,9 +7,9 @@ import logging
 from typing import TYPE_CHECKING
 
 from modbus_connection import ModbusExceptionError
-from modbus_connection.model import Device, Raw, UpdateReport
+from modbus_connection.model import Device, Raw, UpdateReport, read_optional
 
-from .components import Control, Readings, SetpointLimits
+from .components import Control, Functions, Readings, SetpointLimits
 from .enums import ModeSetting
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 POLLED = ("control", "readings")
 
 # Every sub-system, for the raw register map.
-ALL_COMPONENTS = ("control", "readings", "limits")
+ALL_COMPONENTS = ("control", "readings", "limits", "functions")
 
 # Zone 1 setpoint ranges from the Midea documentation, used until the device
 # reports its own.
@@ -58,13 +58,17 @@ class MideaHeatPump(Device):
         self.control = Control(unit)
         self.readings = Readings(unit)
         self.limits = SetpointLimits(unit)
+        self._functions = Functions(unit)
+        self.functions: Functions | None = None
+        """The enabled functions, or None if the controller does not serve them."""
 
     async def _async_setup(self) -> None:
-        """Read the setpoint limits once; they only change in the installer menu.
+        """Read the setpoint limits and enabled functions once.
 
-        A controller that refuses them keeps the documented defaults for good.
-        Any other error propagates, failing this poll, and the next poll tries
-        again.
+        Both only change in the installer menu. A controller that refuses the
+        limits keeps the documented defaults for good, and one that refuses the
+        functions counts as having every function. Any other error propagates,
+        failing this poll, and the next poll tries again.
         """
         try:
             await self.limits.async_update(notify=False)
@@ -73,6 +77,20 @@ class MideaHeatPump(Device):
                 "The heat pump refused its setpoint limits, using the defaults: %s",
                 err,
             )
+        self.functions = await read_optional(self._functions)
+        if self.functions is None:
+            _LOGGER.warning(
+                "The heat pump refused its function settings; offering every mode"
+            )
+
+    @property
+    def cooling_enabled(self) -> bool:
+        """Whether the installer enabled cooling, True if unknown."""
+        return self.functions is None or self.functions.cooling is not False
+
+    def has_function(self, name: str) -> bool:
+        """Whether an optional function is enabled; False if unknown."""
+        return self.functions is not None and bool(getattr(self.functions, name))
 
     async def async_update(self) -> UpdateReport:
         """Refresh every polled sub-system, each on its own.

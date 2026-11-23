@@ -13,6 +13,7 @@ from .coordinator import MideaConfigEntry, MideaDataUpdateCoordinator
 from .m_thermal_modbus import MideaHeatPump
 
 PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
     Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,

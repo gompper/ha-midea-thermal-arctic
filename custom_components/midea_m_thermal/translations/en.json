@@ -39,6 +39,62 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "defrosting": {
+        "name": "Defrosting"
+      },
+      "anti_freeze": {
+        "name": "Frost protection"
+      },
+      "oil_return": {
+        "name": "Oil return"
+      },
+      "internal_pump": {
+        "name": "Circulation pump"
+      },
+      "external_pump": {
+        "name": "External circulation pump"
+      },
+      "backup_heater": {
+        "name": "Backup heater"
+      },
+      "backup_heater_2": {
+        "name": "Backup heater stage 2"
+      },
+      "tank_heater": {
+        "name": "Tank heater"
+      },
+      "auxiliary_heat_source": {
+        "name": "Auxiliary heat source"
+      },
+      "dhw_pump": {
+        "name": "Hot water circulation pump"
+      },
+      "mixing_pump": {
+        "name": "Zone 2 mixing pump"
+      },
+      "crankcase_heater": {
+        "name": "Crankcase heater"
+      },
+      "valve_sv1": {
+        "name": "3-way valve SV1"
+      },
+      "valve_sv2": {
+        "name": "3-way valve SV2"
+      },
+      "valve_sv3": {
+        "name": "3-way valve SV3"
+      },
+      "thermostat_heating": {
+        "name": "Room thermostat heating demand"
+      },
+      "thermostat_cooling": {
+        "name": "Room thermostat cooling demand"
+      },
+      "alarm": {
+        "name": "Alarm"
+      }
+    },
     "number": {
       "target_temperature": {
         "name": "Target temperature"
@@ -161,6 +217,116 @@
       },
       "error_code": {
         "name": "Error code"
+      },
+      "error": {
+        "name": "Error",
+        "state": {
+          "none": "No error",
+          "e0": "E0: Water flow fault (E8 three times)",
+          "e1": "E1: Phase loss or swapped neutral and live (three-phase units)",
+          "e2": "E2: Communication fault between controller and hydraulic module",
+          "e3": "E3: Total water outlet temperature sensor (T1) fault",
+          "e4": "E4: Water tank temperature sensor (T5) fault",
+          "e5": "E5: Condenser refrigerant outlet temperature sensor (T3) fault",
+          "e6": "E6: Outdoor temperature sensor (T4) fault",
+          "e7": "E7: Buffer tank top temperature sensor (Tbt1) fault",
+          "e8": "E8: Water flow failure",
+          "e9": "E9: Suction temperature sensor (Th) fault",
+          "ea": "EA: Discharge temperature sensor (Tp) fault",
+          "eb": "Eb: Solar temperature sensor (Tsolar) fault",
+          "ec": "Ec: Buffer tank bottom temperature sensor (Tbt2) fault",
+          "ed": "Ed: Water inlet temperature sensor (Tw_in) fault",
+          "ee": "EE: Hydraulic module EEPROM failure",
+          "p0": "P0: Low pressure switch protection",
+          "p1": "P1: High pressure switch protection",
+          "p3": "P3: Compressor overcurrent protection",
+          "p4": "P4: High discharge temperature protection",
+          "p5": "P5: Water temperature difference too big",
+          "p6": "P6: Inverter module protection",
+          "pb": "Pb: Anti-freeze mode",
+          "pd": "Pd: Condenser refrigerant outlet temperature too high",
+          "pp": "PP: Unusual water temperature difference",
+          "h0": "H0: Communication fault between PCB B and hydraulic module",
+          "h1": "H1: Communication fault between inverter PCB A and main PCB B",
+          "h2": "H2: Refrigerant liquid temperature sensor (T2) fault",
+          "h3": "H3: Refrigerant gas temperature sensor (T2B) fault",
+          "h4": "H4: P6 protection three times",
+          "h5": "H5: Room temperature sensor (Ta) fault",
+          "h6": "H6: DC fan motor fault",
+          "h7": "H7: Voltage protection",
+          "h8": "H8: Pressure sensor fault",
+          "h9": "H9: Zone 2 water temperature sensor (Tw2) fault",
+          "ha": "HA: Water outlet temperature sensor (Tw_out) fault",
+          "hb": "Hb: PP protection three times with Tw_out below 7 °C",
+          "hd": "Hd: Communication fault between parallel hydraulic modules",
+          "he": "HE: Communication fault between main board and thermostat board",
+          "hf": "HF: Inverter module EEPROM fault",
+          "hh": "HH: H6 ten times in two hours",
+          "hp": "HP: Low pressure protection three times in an hour",
+          "c7": "C7: Inverter module temperature too high",
+          "bh": "bH: PED PCB fault",
+          "f1": "F1: Low DC bus voltage protection",
+          "l0": "L0: Module protection",
+          "l1": "L1: DC bus low voltage protection",
+          "l2": "L2: DC bus high voltage protection",
+          "l4": "L4: MCE fault",
+          "l5": "L5: Zero speed protection",
+          "l7": "L7: Phase sequence fault",
+          "l8": "L8: Speed difference over 15 Hz between clocks",
+          "l9": "L9: Speed difference over 15 Hz from setpoint",
+          "unknown": "Unknown error"
+        }
+      },
+      "error_code_extended": {
+        "name": "Extended error code"
+      },
+      "curve_target_temperature": {
+        "name": "Climate curve target temperature"
+      },
+      "room_temperature": {
+        "name": "Room temperature"
+      },
+      "renewable_heating_power": {
+        "name": "Ambient heat"
+      },
+      "renewable_heating_energy": {
+        "name": "Ambient heat energy"
+      },
+      "fan_speed": {
+        "name": "Fan speed"
+      },
+      "compressor_hours": {
+        "name": "Compressor operating time"
+      },
+      "refrigerant_liquid_temperature": {
+        "name": "Refrigerant liquid temperature"
+      },
+      "refrigerant_gas_temperature": {
+        "name": "Refrigerant gas temperature"
+      },
+      "refrigerant_pipe_temperature": {
+        "name": "Outdoor refrigerant pipe temperature"
+      },
+      "module_temperature": {
+        "name": "Inverter module temperature"
+      },
+      "expansion_valve": {
+        "name": "Expansion valve opening"
+      },
+      "target_frequency": {
+        "name": "Compressor target frequency"
+      },
+      "dc_bus_current": {
+        "name": "DC bus current"
+      },
+      "dc_bus_voltage": {
+        "name": "DC bus voltage"
+      },
+      "current_limit": {
+        "name": "Current limit code"
+      },
+      "pump_duty_cycle": {
+        "name": "Circulation pump duty cycle"
       }
     },
     "switch": {
