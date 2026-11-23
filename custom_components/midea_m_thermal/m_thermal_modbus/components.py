@@ -24,9 +24,11 @@ from .enums import ModeSetting, OperatingState, OperationMode
 _MAX_SETPOINT = 99
 
 # Raw values a temperature register holds when its sensor is absent or broken:
-# 0x7F and 0x7FFF are documented, 0xFF and 0xFFFF are what unfitted sensors
-# report in practice.
-_NO_TEMPERATURE = (0x7F, 0xFF, 0x7FFF, 0xFFFF)
+# 0x7F and 0x7FFF are documented, 0xFF is a common unfitted-sensor marker. None
+# of them is a temperature a heat pump sees. 0xFFFF is not among them: the
+# registers are signed, so it is -1 °C, a reading these units report every
+# winter day.
+_NO_TEMPERATURE = (0x7F, 0xFF, 0x7FFF)
 
 # A COP or EER above this is a ramp-up spike, not a reading.
 _MAX_EFFICIENCY = 10

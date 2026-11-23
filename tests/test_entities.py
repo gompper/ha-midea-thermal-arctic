@@ -59,7 +59,7 @@ async def _poll(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
         ("sensor.heat_pump_heat_exchanger_outlet_temperature", "32", "°C"),
         ("sensor.heat_pump_discharge_temperature", "52", "°C"),
         ("sensor.heat_pump_suction_temperature", "3", "°C"),
-        ("sensor.heat_pump_condenser_temperature", STATE_UNKNOWN, "°C"),
+        ("sensor.heat_pump_condenser_temperature", "-1", "°C"),
         ("sensor.heat_pump_water_temperature_delta", "4.0", "°C"),
         ("sensor.heat_pump_water_flow", "1.07", "m³/h"),
         ("sensor.heat_pump_compressor_frequency", "29", "Hz"),
