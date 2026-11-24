@@ -214,7 +214,10 @@ class Readings(Component):
     energy_produced = _energy(145)
     """Lifetime heat (or cold) delivered, all modes."""
 
-    heating_capacity = gauge(148, 0.01, signed=False, unit="kW")
+    heating_capacity = gauge(148, 0.01, unit="kW")
+    """Heat delivered to the water right now. Negative while defrosting, when
+    the unit takes heat from the water to thaw the outdoor coil: 65258 is
+    -2.78 kW, not 652.58 kW."""
 
     power_consumption = gauge(150, 0.01, signed=False, unit="kW")
     """Electrical power in heating mode. Reads 0 in cooling mode, even with the
