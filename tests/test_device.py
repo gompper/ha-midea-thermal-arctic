@@ -188,6 +188,16 @@ async def test_absent_temperature_sensor_is_no_value(
     assert device.readings.outdoor_temperature is None
 
 
+async def test_heating_capacity_is_negative_while_defrosting(
+    device: MideaHeatPump, mock_unit: MockModbusUnit
+) -> None:
+    """Defrosting takes heat from the water, which register 148 reports as a
+    16-bit two's complement value, not as hundreds of kW."""
+    mock_unit.holding[148] = 65258
+    await device.async_update()
+    assert device.readings.heating_capacity == pytest.approx(-2.78)
+
+
 @pytest.mark.parametrize(("raw", "expected"), [(0, None), (1100, None), (401, 4.01)])
 async def test_cop_filters_idle_and_spikes(
     device: MideaHeatPump, mock_unit: MockModbusUnit, raw: int, expected: float | None
