@@ -60,6 +60,12 @@
           "cooling": "mdi:snowflake",
           "heating": "mdi:fire"
         }
+      },
+      "silent_level": {
+        "default": "mdi:volume-low"
+      },
+      "climate_curve_number": {
+        "default": "mdi:chart-bell-curve-cumulative"
       }
     },
     "sensor": {
@@ -159,6 +165,15 @@
     "switch": {
       "power": {
         "default": "mdi:power"
+      },
+      "eco_mode": {
+        "default": "mdi:leaf"
+      },
+      "silent_mode": {
+        "default": "mdi:volume-off"
+      },
+      "climate_curve": {
+        "default": "mdi:chart-bell-curve-cumulative"
       }
     }
   }

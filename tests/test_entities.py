@@ -103,6 +103,11 @@ async def _poll(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
         ("binary_sensor.heat_pump_external_circulation_pump", "on", None),
         ("binary_sensor.heat_pump_alarm", "off", None),
         (POWER, "on", None),
+        ("switch.heat_pump_eco_mode", "off", None),
+        ("switch.heat_pump_silent_mode", "on", None),
+        ("switch.heat_pump_climate_curve", "off", None),
+        ("select.heat_pump_silent_mode_level", "level_2", None),
+        ("select.heat_pump_climate_curve_number", "3", None),
         (MODE, "heating", None),
         (TARGET, "28", "°C"),
     ],
@@ -204,6 +209,83 @@ async def test_power_switch(hass: HomeAssistant, mock_unit: MockModbusUnit) -> N
     )
     assert mock_unit.holding[0] == 0b1010
     assert hass.states.get(POWER).state == "on"
+
+
+@pytest.mark.usefixtures("init_integration")
+@pytest.mark.parametrize(
+    ("entity_id", "bit"),
+    [
+        ("switch.heat_pump_silent_mode", 6),
+        ("switch.heat_pump_eco_mode", 10),
+        ("switch.heat_pump_climate_curve", 12),
+    ],
+)
+async def test_function_switches_touch_only_their_bit(
+    hass: HomeAssistant, mock_unit: MockModbusUnit, entity_id: str, bit: int
+) -> None:
+    """Leak detection, the disinfection timer and the rest keep their state."""
+    others = 0b1001_0000_1001_0001 & ~(1 << bit)
+    mock_unit.holding[5] = others
+    await hass.services.async_call(
+        "switch", SERVICE_TURN_ON, {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+    assert mock_unit.holding[5] == others | 1 << bit
+    assert hass.states.get(entity_id).state == "on"
+
+    await hass.services.async_call(
+        "switch", SERVICE_TURN_OFF, {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+    assert mock_unit.holding[5] == others
+    assert hass.states.get(entity_id).state == "off"
+
+
+@pytest.mark.usefixtures("init_integration")
+async def test_silent_level_select(
+    hass: HomeAssistant, mock_unit: MockModbusUnit
+) -> None:
+    """The level is bit 7 of the function register; the rest stays."""
+    entity_id = "select.heat_pump_silent_mode_level"
+    assert hass.states.get(entity_id).attributes["options"] == ["level_1", "level_2"]
+    await hass.services.async_call(
+        "select",
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: entity_id, ATTR_OPTION: "level_1"},
+        blocking=True,
+    )
+    assert mock_unit.holding[5] == 0b0100_0000
+    assert mock_unit.holding[20] == 0
+    assert hass.states.get(entity_id).state == "level_1"
+
+
+@pytest.mark.usefixtures("init_integration")
+async def test_climate_curve_select(
+    hass: HomeAssistant, mock_unit: MockModbusUnit
+) -> None:
+    """Curves 1-9 are offered and written to register 18."""
+    entity_id = "select.heat_pump_climate_curve_number"
+    assert hass.states.get(entity_id).attributes["options"] == [
+        str(curve) for curve in range(1, 10)
+    ]
+    await hass.services.async_call(
+        "select",
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: entity_id, ATTR_OPTION: "7"},
+        blocking=True,
+    )
+    assert mock_unit.holding[18] == 7
+    assert hass.states.get(entity_id).state == "7"
+
+
+@pytest.mark.usefixtures("init_integration")
+async def test_climate_curve_out_of_range_is_unknown(
+    hass: HomeAssistant, mock_unit: MockModbusUnit, freezer: FrozenDateTimeFactory
+) -> None:
+    """A curve number the controller should not report shows as unknown."""
+    mock_unit.holding[18] = 0
+    await _poll(hass, freezer)
+    assert hass.states.get("select.heat_pump_climate_curve_number").state == (
+        STATE_UNKNOWN
+    )
 
 
 @pytest.mark.usefixtures("init_integration")

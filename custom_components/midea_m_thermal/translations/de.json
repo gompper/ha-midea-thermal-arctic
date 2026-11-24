@@ -108,6 +108,27 @@
           "cooling": "Kühlen",
           "heating": "Heizen"
         }
+      },
+      "silent_level": {
+        "name": "Flüstermodus-Stufe",
+        "state": {
+          "level_1": "Stufe 1",
+          "level_2": "Stufe 2"
+        }
+      },
+      "climate_curve_number": {
+        "name": "Heizkurven-Nummer",
+        "state": {
+          "1": "Kurve 1",
+          "2": "Kurve 2",
+          "3": "Kurve 3",
+          "4": "Kurve 4",
+          "5": "Kurve 5",
+          "6": "Kurve 6",
+          "7": "Kurve 7",
+          "8": "Kurve 8",
+          "9": "Kurve 9"
+        }
       }
     },
     "sensor": {
@@ -332,6 +353,15 @@
     "switch": {
       "power": {
         "name": "Ein/Aus"
+      },
+      "eco_mode": {
+        "name": "ECO-Modus"
+      },
+      "silent_mode": {
+        "name": "Flüstermodus"
+      },
+      "climate_curve": {
+        "name": "Heizkurve"
       }
     }
   },

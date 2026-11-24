@@ -108,6 +108,27 @@
           "cooling": "Cooling",
           "heating": "Heating"
         }
+      },
+      "silent_level": {
+        "name": "Silent mode level",
+        "state": {
+          "level_1": "Level 1",
+          "level_2": "Level 2"
+        }
+      },
+      "climate_curve_number": {
+        "name": "Climate curve number",
+        "state": {
+          "1": "Curve 1",
+          "2": "Curve 2",
+          "3": "Curve 3",
+          "4": "Curve 4",
+          "5": "Curve 5",
+          "6": "Curve 6",
+          "7": "Curve 7",
+          "8": "Curve 8",
+          "9": "Curve 9"
+        }
       }
     },
     "sensor": {
@@ -332,6 +353,15 @@
     "switch": {
       "power": {
         "name": "Power"
+      },
+      "eco_mode": {
+        "name": "ECO mode"
+      },
+      "silent_mode": {
+        "name": "Silent mode"
+      },
+      "climate_curve": {
+        "name": "Climate curve"
       }
     }
   },

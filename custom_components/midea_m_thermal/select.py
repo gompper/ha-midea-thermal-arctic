@@ -1,16 +1,17 @@
-"""Mode selection of a Midea M-Thermal heat pump."""
+"""Selects of a Midea M-Thermal heat pump."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import MideaConfigEntry
 from .entity import MideaEntity, MideaEntityDescription
-from .m_thermal_modbus import ModeSetting
+from .m_thermal_modbus import CLIMATE_CURVES, ModeSetting, SilentLevel
 
 PARALLEL_UPDATES = 1
 
@@ -27,14 +28,44 @@ MODE = MideaSelectEntityDescription(
     options=[mode.name.lower() for mode in ModeSetting],
 )
 
+SILENT_LEVEL = MideaSelectEntityDescription(
+    key="silent_level",
+    translation_key="silent_level",
+    component="control",
+    entity_category=EntityCategory.CONFIG,
+    options=[level.name.lower() for level in SilentLevel],
+)
+
+CLIMATE_CURVE = MideaSelectEntityDescription(
+    key="climate_curve_number",
+    translation_key="climate_curve_number",
+    component="control",
+    entity_category=EntityCategory.CONFIG,
+    options=[str(curve) for curve in CLIMATE_CURVES],
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: MideaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the heat pump mode select."""
-    async_add_entities([MideaModeSelect(entry.runtime_data, MODE)])
+    """Set up the heat pump selects."""
+    coordinator = entry.runtime_data
+    async_add_entities(
+        [
+            MideaModeSelect(coordinator, MODE),
+            MideaSilentLevelSelect(coordinator, SILENT_LEVEL),
+            MideaClimateCurveSelect(coordinator, CLIMATE_CURVE),
+        ]
+    )
+
+
+def _with_current(options: list[str], current: str | None) -> list[str]:
+    """The options, plus a value set on the wired controller so it can show."""
+    if current is not None and current not in options:
+        return [*options, current]
+    return options
 
 
 class MideaModeSelect(MideaEntity, SelectEntity):
@@ -49,13 +80,9 @@ class MideaModeSelect(MideaEntity, SelectEntity):
         Auto switches between heating and cooling, so it needs cooling too. A
         mode set on the wired controller stays listed so the state can show it.
         """
-        device = self.coordinator.device
-        if device.cooling_enabled:
+        if self.coordinator.device.cooling_enabled:
             return list(self.entity_description.options or [])
-        options = [ModeSetting.HEATING.name.lower()]
-        if (current := self.current_option) is not None and current not in options:
-            options.append(current)
-        return options
+        return _with_current([ModeSetting.HEATING.name.lower()], self.current_option)
 
     @property
     def current_option(self) -> str | None:
@@ -67,4 +94,40 @@ class MideaModeSelect(MideaEntity, SelectEntity):
         """Switch mode, moving the setpoint into the new mode's range."""
         await self._async_write(
             self.coordinator.device.async_set_mode(ModeSetting[option.upper()])
+        )
+
+
+class MideaSilentLevelSelect(MideaEntity, SelectEntity):
+    """Silent mode level 1 or 2."""
+
+    entity_description: MideaSelectEntityDescription
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the silent mode level."""
+        level = self.coordinator.device.control.silent_level
+        return level.name.lower() if level is not None else None
+
+    async def async_select_option(self, option: str) -> None:
+        """Write the silent mode level."""
+        await self._async_write(
+            self.coordinator.device.async_set_silent_level(SilentLevel[option.upper()])
+        )
+
+
+class MideaClimateCurveSelect(MideaEntity, SelectEntity):
+    """The Zone 1 climate curve, 1-9."""
+
+    entity_description: MideaSelectEntityDescription
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the curve, or None for a value outside 1-9."""
+        curve = self.coordinator.device.control.zone1_curve
+        return str(curve) if curve in CLIMATE_CURVES else None
+
+    async def async_select_option(self, option: str) -> None:
+        """Write the curve."""
+        await self._async_write(
+            self.coordinator.device.async_set_zone1_curve(int(option))
         )

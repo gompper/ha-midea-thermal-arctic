@@ -20,7 +20,14 @@ from modbus_connection.model import (
     uint32,
 )
 
-from .enums import ERROR_CODES, ModeSetting, OperatingState, OperationMode, SubModel
+from .enums import (
+    ERROR_CODES,
+    ModeSetting,
+    OperatingState,
+    OperationMode,
+    SilentLevel,
+    SubModel,
+)
 
 # Anything that answered a zone setpoint limit outside this is not a limit.
 _MAX_SETPOINT = 99
@@ -31,6 +38,9 @@ _MAX_SETPOINT = 99
 # registers are signed, so it is -1 °C, a reading these units report every
 # winter day.
 _NO_TEMPERATURE = (0x7F, 0xFF, 0x7FFF)
+
+# Climate curves the wired controller offers per zone.
+CLIMATE_CURVES = range(1, 10)
 
 # A COP or EER above this is a ramp-up spike, not a reading.
 _MAX_EFFICIENCY = 10
@@ -48,6 +58,13 @@ def _energy(address: int) -> NumberField[float]:
     reset. R290 units report hundredths of a kWh.
     """
     return uint32(address, scale=0.01, nan=0, unit="kWh")
+
+
+def _climate_curve(value: int) -> int:
+    """Reject a climate curve number the controller does not have."""
+    if value not in CLIMATE_CURVES:
+        raise ValueError(f"climate curve {value} is not 1-9")
+    return value
 
 
 def _efficiency(value: float | None) -> float | None:
@@ -72,6 +89,30 @@ class Control(Component):
     zone1_target = bits(2, 0, 8, writable=True, unit="°C")
     """Zone 1 water setpoint T1s. Register 2 packs Zone 2 into its high byte,
     which a write leaves alone."""
+
+    # Register 5 also holds refrigerant leak detection (bit 0) and the
+    # disinfection timer (bit 4). A bit write reads the register fresh and
+    # writes every other bit back unchanged.
+    silent_mode = bit(5, 6, writable=True)
+    eco_mode = bit(5, 10, writable=True)
+    zone1_climate_curve = bit(5, 12, writable=True)
+    """Whether Zone 1's setpoint follows the climate curve rather than T1s."""
+
+    zone1_curve = integer(18, signed=False, writable=_climate_curve)
+    """The Zone 1 climate curve, 1-9."""
+
+    silent_level_2 = bit(5, 7, writable=True)
+    """Silent mode runs at level 2 rather than 1. Register 20 holds the same
+    choice plus boost in newer protocol versions, but reads 0 on both tested
+    units (protocol V4.1) while this bit reads 1, so this bit is used."""
+
+    @property
+    def silent_level(self) -> SilentLevel | None:
+        """How quiet silent mode runs."""
+        level_2 = self.silent_level_2
+        if level_2 is None:
+            return None
+        return SilentLevel.LEVEL_2 if level_2 else SilentLevel.LEVEL_1
 
 
 class Readings(Component):
