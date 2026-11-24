@@ -23,6 +23,8 @@ It is set up in the UI, knows the heat pump's register map itself, and uses the 
 | Gateway | Any Modbus TCP-to-RTU gateway, e.g. Elfin EW11A (WiFi) or EE11A (Ethernet) |
 | Home Assistant | 2026.10 or later |
 
+Support for more models, optional hardware (hot water, zone 2, heaters) and gateways is planned step by step, see the [roadmap](ROADMAP.md).
+
 Only what the tested units have is supported: one zone of water temperature control, without domestic hot water, tank booster or backup heaters. Other M-Thermal models likely share the register map but are untested. The Midea documentation notes that non-R290 units report energy unscaled, which this integration does not handle yet.
 
 ## Wiring
