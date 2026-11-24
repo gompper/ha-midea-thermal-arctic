@@ -16,6 +16,7 @@ from custom_components.midea_m_thermal.m_thermal_modbus import (
     ModeSetting,
     OperatingState,
     OperationMode,
+    SilentLevel,
     SubModel,
 )
 
@@ -147,7 +148,7 @@ async def test_reads_only_what_the_controller_serves(
         (204, 1),
         (210, 1),
         (211, 1),
-        (0, 3),
+        (0, 19),
         (100, 100),
     ]
 
@@ -155,7 +156,7 @@ async def test_reads_only_what_the_controller_serves(
     await device.async_update()
     # The limits and functions are read once.
     assert [(e.address, e.count) for e in mock_unit.read_events] == [
-        (0, 3),
+        (0, 19),
         (100, 100),
     ]
 
@@ -335,6 +336,28 @@ async def test_set_power_touches_only_zone_1(
     assert mock_unit.holding[0] == 0b1000
     await device.async_set_power(True)
     assert mock_unit.holding[0] == 0b1010
+
+
+async def test_decodes_the_function_settings(device: MideaHeatPump) -> None:
+    """Register 5 of the 10 kW unit: silent mode at level 2, the rest off."""
+    await device.async_update()
+    control = device.control
+    assert control.silent_mode is True
+    assert control.silent_level is SilentLevel.LEVEL_2
+    assert control.eco_mode is False
+    assert control.zone1_climate_curve is False
+    assert control.zone1_curve == 3
+
+
+async def test_zone1_curve_rejects_numbers_outside_1_to_9(
+    device: MideaHeatPump, mock_unit: MockModbusUnit
+) -> None:
+    """Nothing is written for a curve the controller does not have."""
+    await device.async_update()
+    for curve in (0, 10):
+        with pytest.raises(ValueError, match="not 1-9"):
+            await device.async_set_zone1_curve(curve)
+    assert mock_unit.holding[18] == 3
 
 
 async def test_a_refused_component_does_not_fail_the_rest(

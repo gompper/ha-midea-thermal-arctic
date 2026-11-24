@@ -8,7 +8,7 @@
 A Home Assistant custom integration for the **Midea M-Thermal Arctic R290** heat pump over Modbus.
 
 > [!WARNING]
-> **Unofficial project, use at your own risk.** This integration is not affiliated with, endorsed by or supported by Midea. It reads from and writes to your heat pump's controller (power, mode and target temperature). It is provided "as is", without warranty of any kind, and the authors accept no liability for damage to your heat pump, your building or anything else, for lost manufacturer warranty, or for any other consequence of using it. See the [license](LICENSE).
+> **Unofficial project, use at your own risk.** This integration is not affiliated with, endorsed by or supported by Midea. It reads from and writes to your heat pump's controller (power, mode, target temperature, ECO and silent mode, climate curve). It is provided "as is", without warranty of any kind, and the authors accept no liability for damage to your heat pump, your building or anything else, for lost manufacturer warranty, or for any other consequence of using it. See the [license](LICENSE).
 >
 > Wiring the RS-485 connection means opening the wired controller. Disconnect power first, follow the manufacturer's manual and local regulations, and leave it to a qualified person if you are unsure.
 
@@ -81,8 +81,15 @@ With the default device name *Heat pump*, entity IDs start with `heat_pump_`.
 | Power (switch) | 0, bit 1 | Zone 1 water temperature control. Other bits are left alone |
 | Mode (select) | 1 | Auto, Cooling, Heating. Only Heating while the installer has cooling disabled (register 210, bit 9) |
 | Target temperature (number) | 2, low byte | Min/max follow the active mode, from the heat pump's own limits (registers 201-204): e.g. Cooling 5-25 °C, Heating and Auto 25-55 °C |
+| ECO mode (switch) | 5, bit 10 | Configuration |
+| Silent mode (switch) | 5, bit 6 | Configuration |
+| Silent mode level (select) | 5, bit 7 | Level 1 or 2. Boost (register 20) is not offered |
+| Climate curve (switch) | 5, bit 12 | Zone 1 follows the climate curve instead of the target temperature |
+| Climate curve number (select) | 18 | Curves 1-9 for Zone 1 |
 
 Cooling and heating share one setpoint register, so switching to Cooling with a setpoint above the cooling maximum pulls it down to that maximum. Every setpoint write re-reads the mode and is clamped to its range, even if the mode was changed on the wired controller since the last poll.
+
+Register 5 also holds refrigerant leak detection and the disinfection timer. The switches and the silent level read it fresh before each write and change only their own bit. Register 20 also holds the silent level in newer protocol versions, but both tested units (protocol V4.1) report 0 there while bit 7 of register 5 reports level 2, so the integration uses the bit.
 
 ### Sensors
 
@@ -163,7 +170,7 @@ Notes:
 
 ## How it talks to the heat pump
 
-Each poll, every 30 seconds, makes two requests: registers 0-2 and one block of 100-199. The setpoint limits in 201-204 and the function settings in 210-211 are read once, one register per request, because the controller refuses multi-register reads above 200. If it refuses the limits, the documented ranges are used; if it refuses the function settings, every mode is offered and optional hardware is left out.
+Each poll, every 30 seconds, makes two requests: registers 0-18 and one block of 100-199. The setpoint limits in 201-204 and the function settings in 210-211 are read once, one register per request, because the controller refuses multi-register reads above 200. If it refuses the limits, the documented ranges are used; if it refuses the function settings, every mode is offered and optional hardware is left out.
 
 A dropped connection makes entities unavailable until the next successful poll, without reloading the integration. After three timeouts in a row, the connection is re-opened, because some serial gateways keep their socket open while the RS-485 side has stopped answering.
 

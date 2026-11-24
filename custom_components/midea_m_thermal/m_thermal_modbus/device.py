@@ -10,7 +10,7 @@ from modbus_connection import ModbusExceptionError
 from modbus_connection.model import Device, Raw, UpdateReport, read_optional
 
 from .components import Control, Functions, Readings, SetpointLimits
-from .enums import ModeSetting
+from .enums import ModeSetting, SilentLevel
 
 if TYPE_CHECKING:
     from modbus_connection import ModbusUnit
@@ -119,6 +119,26 @@ class MideaHeatPump(Device):
     async def async_set_power(self, on: bool) -> None:
         """Switch Zone 1 water temperature control, keeping the other bits."""
         await self.control.write("zone1_water_power", on)
+
+    async def async_set_silent_mode(self, on: bool) -> None:
+        """Switch silent mode, keeping the other function bits."""
+        await self.control.write("silent_mode", on)
+
+    async def async_set_silent_level(self, level: SilentLevel) -> None:
+        """Choose how quiet silent mode runs, keeping the other function bits."""
+        await self.control.write("silent_level_2", level is SilentLevel.LEVEL_2)
+
+    async def async_set_eco_mode(self, on: bool) -> None:
+        """Switch ECO mode, keeping the other function bits."""
+        await self.control.write("eco_mode", on)
+
+    async def async_set_zone1_climate_curve(self, on: bool) -> None:
+        """Make Zone 1 follow its climate curve, or T1s when off."""
+        await self.control.write("zone1_climate_curve", on)
+
+    async def async_set_zone1_curve(self, curve: int) -> None:
+        """Choose Zone 1's climate curve, 1-9."""
+        await self.control.write("zone1_curve", curve)
 
     async def async_set_zone1_target(self, value: int) -> int:
         """Write the Zone 1 setpoint, clamped into the live mode's range.

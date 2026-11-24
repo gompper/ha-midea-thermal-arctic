@@ -11,6 +11,13 @@ class ModeSetting(IntEnum):
     HEATING = 3
 
 
+class SilentLevel(IntEnum):
+    """How quiet silent mode runs (register 5 bit 7)."""
+
+    LEVEL_1 = 0
+    LEVEL_2 = 1
+
+
 class OperatingState(IntEnum):
     """What the heat pump is doing right now (register 101)."""
 
